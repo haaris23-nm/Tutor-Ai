@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutor AI - Elite Academic Success Co-Pilot</title>
+  
+  <!-- Tailwind CSS v3 via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Custom Google Font Pairings -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet font-sans">
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="bg-[#0F1117] text-[#F5F7FA] min-h-screen flex flex-col justify-between overflow-x-hidden antialiased selection:bg-indigo-500/30">
+
+  <!-- AUTHENTICATION SCREEN WRAPPER -->
+  <div id="auth-screen" class="hidden min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-[#0F1117] to-[#0A0B0E]">
+    <div class="w-full max-w-md bg-[#181C26]/80 backdrop-blur-xl border border-white/5 p-8 rounded-2xl shadow-2xl">
+      <div class="text-center mb-8">
+        <div class="inline-flex p-3 rounded-xl bg-indigo-500/10 text-indigo-400 mb-3 border border-indigo-500/20">
+          <i data-lucide="graduation-cap" class="w-8 h-8"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Tutor AI</h1>
+        <p class="text-gray-400 text-sm mt-1">Your Elite Academic Success Co-Pilot</p>
+      </div>
+
+      <!-- Auth Form Selector -->
+      <div class="flex border-b border-white/5 mb-6">
+        <button id="tab-login" onclick="switchAuthMode('login')" class="flex-1 pb-3 text-center text-sm font-medium border-b-2 border-indigo-500 text-white">
+          Sign In
+        </button>
+        <button id="tab-register" onclick="switchAuthMode('register')" class="flex-1 pb-3 text-center text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-all">
+          Create Account
+        </button>
+      </div>
+
+      <!-- Form Inputs -->
+      <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+        <div id="username-field" class="hidden">
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </span>
+            <input type="text" id="auth-username" class="w-full pl-10 pr-4 py-3 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 transition-all text-sm" placeholder="e.g. Marie Curie">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email Address</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i data-lucide="mail" class="w-4 h-4"></i>
+            </span>
+            <input type="email" id="auth-email" required class="w-full pl-10 pr-4 py-3 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 transition-all text-sm" placeholder="you@university.edu">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+            </span>
+            <input type="password" id="auth-password" required class="w-full pl-10 pr-4 py-3 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 transition-all text-sm" placeholder="••••••••">
+          </div>
+        </div>
+
+        <button type="submit" id="auth-submit-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] transition-all rounded-xl text-white text-sm font-semibold shadow-lg shadow-indigo-600/15 flex items-center justify-center gap-2 mt-2">
+          <span>Authenticate</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="mt-6 p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/10 text-xs text-indigo-300 text-center flex items-center gap-2">
+        <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
+        <span>Supports dynamic offline offline operations with automatic Spring Boot sync when active.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION CORE CONTENT WRAPPER -->
+  <div id="app-screen" class="hidden flex-1 flex flex-col">
+    <!-- Header Navigation Panel -->
+    <header class="sticky top-0 bg-[#0F1117]/85 backdrop-blur-md border-b border-white/5 px-8 py-4 flex items-center justify-between z-30">
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            Tutor AI <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active Repo</span>
+          </h1>
+          <p class="text-xs text-gray-400">Elite Academic Success System</p>
+        </div>
+      </div>
+
+      <!-- Sync Status Badge -->
+      <div class="flex items-center gap-4">
+        <div id="sync-badge" class="px-3 py-1 rounded-full text-xs font-mono bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+          <span id="sync-text">Checking server...</span>
+        </div>
+
+        <!-- User Greeting and Logout -->
+        <div class="flex items-center gap-3 border-l border-white/10 pl-4">
+          <div class="text-right">
+            <span id="user-display-name" class="block text-sm font-semibold text-white">Student User</span>
+            <span id="user-display-email" class="block text-xs text-gray-400">student@edu.com</span>
+          </div>
+          <button onclick="handleLogout()" class="p-2.5 rounded-xl bg-white/5 hover:bg-red-500/10 hover:text-red-400 border border-white/5 hover:border-red-500/20 transition-all" title="Logout Session">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Side View Selection Drawer and Tab Workspace -->
+    <div class="flex-1 flex max-w-7xl w-full mx-auto p-6 gap-6">
+      
+      <!-- Side Navigation Rails -->
+      <aside class="w-64 shrink-0 flex flex-col gap-2">
+        <button id="nav-dashboard" onclick="switchView('dashboard')" class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium bg-indigo-500/10 text-white border border-indigo-500/20 transition-all text-left">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Study Dashboard</span>
+        </button>
+
+        <button id="nav-subjects" onclick="switchView('subjects')" class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>Academic Subjects</span>
+        </button>
+
+        <button id="nav-notes" onclick="switchView('notes')" class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+          <i data-lucide="file-text" class="w-4 h-4"></i>
+          <span>Notes Repository</span>
+        </button>
+
+        <button id="nav-flashcards" onclick="switchView('flashcards')" class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          <span>Flashcard Study</span>
+        </button>
+
+        <button id="nav-planner" onclick="switchView('planner')" class="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white transition-all text-left">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          <span>Study Planner</span>
+        </button>
+      </aside>
+
+      <!-- Active workspace content -->
+      <main class="flex-1 bg-[#13161F] border border-white/5 rounded-2xl p-6 shadow-xl relative min-w-0">
+        
+        <!-- ==================== DASHBOARD VIEW ==================== -->
+        <div id="view-dashboard" class="space-y-6">
+          <div class="flex items-center justify-between border-b border-white/5 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white">Study Command Center</h2>
+              <p class="text-xs text-gray-400">Track and synthesize your academic progression indexes dynamically.</p>
+            </div>
+            
+            <!-- Quick Notification center -->
+            <div id="badge-academic-standing" class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-xs">
+              Dean's List Standing
+            </div>
+          </div>
+
+          <!-- Academic Metrics Stats Row -->
+          <div class="grid grid-cols-4 gap-4">
+            <div class="bg-[#181C26] border border-white/5 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Subjects</span>
+                <span id="metric-subjects" class="text-2xl font-bold text-white mt-1 block">0</span>
+              </div>
+              <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl"><i data-lucide="book-open" class="w-5 h-5"></i></div>
+            </div>
+
+            <div class="bg-[#181C26] border border-white/5 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Notes</span>
+                <span id="metric-notes" class="text-2xl font-bold text-white mt-1 block">0</span>
+              </div>
+              <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+            </div>
+
+            <div class="bg-[#181C26] border border-white/5 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Flashcards</span>
+                <span id="metric-flashcards" class="text-2xl font-bold text-white mt-1 block">0</span>
+              </div>
+              <div class="p-3 bg-amber-500/10 text-amber-400 rounded-xl"><i data-lucide="layers" class="w-5 h-5"></i></div>
+            </div>
+
+            <div class="bg-[#181C26] border border-white/5 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Planner Tasks</span>
+                <span id="metric-tasks" class="text-2xl font-bold text-white mt-1 block">0</span>
+              </div>
+              <div class="p-3 bg-rose-500/10 text-rose-400 rounded-xl"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-6">
+            <!-- AI Study Recommendations Card -->
+            <div class="col-span-2 bg-[#181C26] border border-white/5 p-5 rounded-xl space-y-4">
+              <div class="flex items-center gap-2 text-indigo-400 border-b border-white/5 pb-3">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <h3 class="text-sm font-bold text-white">Gemini Academic Advice</h3>
+              </div>
+              <p id="dashboard-ai-recommendations" class="text-sm text-gray-300 leading-relaxed italic">
+                Gathering active note telemetry. Your personalized Gemini study plan is compiling...
+              </p>
+              <button onclick="fetchRecommendations()" class="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Regenerate Recommendation</span>
+              </button>
+            </div>
+
+            <!-- Notification Messages -->
+            <div class="bg-[#181C26] border border-white/5 p-5 rounded-xl space-y-3">
+              <h3 class="text-sm font-bold text-white border-b border-white/5 pb-3 flex items-center gap-2">
+                <i data-lucide="bell" class="w-4 h-4 text-emerald-400"></i>
+                <span>Notifications</span>
+              </h3>
+              <div id="notifications-list" class="space-y-3 max-h-56 overflow-y-auto pr-1">
+                <!-- Notifications template -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity Logs Section -->
+          <div class="bg-[#181C26] border border-white/5 p-5 rounded-xl">
+            <h3 class="text-sm font-bold text-white border-b border-white/5 pb-3 mb-4 flex items-center gap-2">
+              <i data-lucide="history" class="w-4 h-4 text-gray-400"></i>
+              <span>Study Activity Feed</span>
+            </h3>
+            <div id="activity-logs-container" class="space-y-3 max-h-64 overflow-y-auto pr-1 font-mono text-xs">
+              <!-- Logs get dynamically appended -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== SUBJECTS VIEW ==================== -->
+        <div id="view-subjects" class="hidden space-y-6">
+          <div class="flex items-center justify-between border-b border-white/5 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white">Academic Subjects</h2>
+              <p class="text-xs text-gray-400">Categorize files and flashcards to build focus areas.</p>
+            </div>
+          </div>
+
+          <form onsubmit="handleCreateSubject(event)" class="bg-[#181C26] border border-white/5 p-5 rounded-xl flex gap-4 items-end">
+            <div class="flex-1">
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Subject Name</label>
+              <input type="text" id="subject-new-title" required class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 transition-all text-sm" placeholder="e.g. Molecular Biology">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Color Label</label>
+              <select id="subject-new-color" class="px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 transition-all text-sm">
+                <option value="indigo">Indigo Glow</option>
+                <option value="emerald">Emerald Zen</option>
+                <option value="amber">Amber Fire</option>
+                <option value="rose">Rose Quartz</option>
+              </select>
+            </div>
+            <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl text-white text-sm font-semibold flex items-center gap-1.5">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Add Subject</span>
+            </button>
+          </form>
+
+          <!-- Subjects Grid -->
+          <div id="subjects-grid" class="grid grid-cols-3 gap-4">
+            <!-- Filled dynamically -->
+          </div>
+        </div>
+
+        <!-- ==================== NOTES VIEW ==================== -->
+        <div id="view-notes" class="hidden space-y-6">
+          <div class="flex items-center justify-between border-b border-white/5 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white">Notes Repository</h2>
+              <p class="text-xs text-gray-400">Upload study material, extract plain-text from PDFs, or request Gemini summaries.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-6">
+            <!-- Create/Upload Form -->
+            <div class="bg-[#181C26] border border-white/5 p-5 rounded-xl space-y-4">
+              <h3 class="text-sm font-bold text-white border-b border-white/5 pb-2">Add New Material</h3>
+              
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Subject Association</label>
+                  <select id="notes-subject-select" class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 text-sm">
+                    <!-- Loaded dynamically -->
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Material Title</label>
+                  <input type="text" id="notes-new-title" class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 text-sm" placeholder="e.g. Chapter 4: Neural Networks">
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Raw Notes content</label>
+                  <textarea id="notes-new-content" rows="6" class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 text-sm" placeholder="Paste your study notes, essay, raw text slides or textbooks here..."></textarea>
+                </div>
+
+                <button onclick="handleCreateNote()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15">
+                  <i data-lucide="sparkles" class="w-4 h-4"></i>
+                  <span>Submit to Tutor AI</span>
+                </button>
+              </div>
+
+              <!-- PDF Upload drag field -->
+              <div class="pt-4 border-t border-white/5 space-y-2">
+                <span class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Ingest Textbooks / PDFs</span>
+                <div class="border-2 border-dashed border-white/10 hover:border-indigo-500/30 rounded-xl p-4 transition-all text-center relative cursor-pointer group">
+                  <input type="file" id="pdf-file-picker" accept=".pdf" onchange="handlePdfUpload(event)" class="absolute inset-0 opacity-0 cursor-pointer">
+                  <div class="space-y-1 text-gray-400 hover:text-indigo-400 transition-all">
+                    <i data-lucide="file-up" class="w-8 h-8 mx-auto stroke-1"></i>
+                    <p class="text-xs font-medium">Select PDF up to 100MB</p>
+                    <p class="text-[10px] text-gray-500">Auto text extraction + AI Flashcard Generation</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes List and Interactive Preview -->
+            <div class="col-span-2 space-y-4">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="folder-git" class="w-4 h-4 text-emerald-400"></i>
+                <span>Study Library</span>
+              </h3>
+              
+              <div id="notes-library-list" class="grid grid-cols-2 gap-4">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== FLASHCARDS VIEW ==================== -->
+        <div id="view-flashcards" class="hidden space-y-6">
+          <div class="flex items-center justify-between border-b border-white/5 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white">Active Recall Decks</h2>
+              <p class="text-xs text-gray-400">Quiz yourself on custom or AI-generated flashcards based on study notes.</p>
+            </div>
+          </div>
+
+          <div id="flashcard-deck-interface" class="max-w-xl mx-auto space-y-6 text-center">
+            
+            <!-- Cards Left Counter -->
+            <div class="flex items-center justify-between text-xs text-gray-400 font-mono">
+              <span id="card-index-counter">Card 0 of 0</span>
+              <span id="level-mastery-badge" class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400">Familiarity: Unfamiliar</span>
+            </div>
+
+            <!-- Flashcard Board Container -->
+            <div id="card-board" onclick="flipActiveCard()" class="min-h-[280px] bg-[#181C26] border border-white/5 hover:border-indigo-500/30 rounded-2xl cursor-pointer p-8 flex flex-col justify-between shadow-2xl relative transition-all group overflow-hidden select-none">
+              <div class="absolute top-4 right-4 px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-gray-400 font-mono tracking-wider group-hover:bg-indigo-500/10 group-hover:text-indigo-400 transition-all uppercase">
+                Tap to Flip
+              </div>
+
+              <!-- Static Quote element in background -->
+              <div class="absolute left-8 top-8 opacity-5 text-indigo-500 group-hover:opacity-10 transition-all pointer-events-none">
+                <i data-lucide="quote" class="w-24 h-24 stroke-[4px]"></i>
+              </div>
+
+              <div class="my-auto">
+                <span id="card-role-label" class="block text-xs font-semibold uppercase tracking-widest text-[#A5B4FC] mb-4">QUESTION</span>
+                <p id="card-main-payload" class="text-lg font-medium text-white px-2 leading-relaxed">
+                  Generate study materials using the Notes Repository to begin review decks.
+                </p>
+              </div>
+
+              <div class="w-full bg-white/5 rounded-full h-1 h-[3px]">
+                <div id="card-progress-bar" class="bg-indigo-500 h-full w-0 transition-all duration-300"></div>
+              </div>
+            </div>
+
+            <!-- Mastery feedback buttons -->
+            <div class="flex items-center justify-center gap-3">
+              <button onclick="markActiveCardMastery('unfamiliar')" class="flex-1 py-3 bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+                <span>Omit (Unfamiliar)</span>
+              </button>
+
+              <button onclick="markActiveCardMastery('review')" class="flex-1 py-3 bg-amber-600/10 border border-amber-500/20 text-amber-400 hover:bg-amber-600/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                <span>Reviewing (Familiar)</span>
+              </button>
+
+              <button onclick="markActiveCardMastery('known')" class="flex-1 py-3 bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                <span>Mastered (Known)</span>
+              </button>
+            </div>
+            
+            <p class="text-[10px] text-gray-500 font-mono">
+              Flipping cards logs learning progression loops securely to your academic profile.
+            </p>
+          </div>
+        </div>
+
+        <!-- ==================== PLANNER VIEW ==================== -->
+        <div id="view-planner" class="hidden space-y-6">
+          <div class="flex items-center justify-between border-b border-white/5 pb-4">
+            <div>
+              <h2 class="text-xl font-bold text-white">Study Planner</h2>
+              <p class="text-xs text-gray-400">Map deadlines, quiz dates, and assignment completions.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-6">
+            <!-- Add Task Form -->
+            <form onsubmit="handleCreateTask(event)" class="bg-[#181C26] border border-white/5 p-5 rounded-xl space-y-4 h-fit">
+              <h3 class="text-sm font-bold text-white border-b border-white/5 pb-2">Schedule Task</h3>
+              
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Subject Association</label>
+                  <select id="planner-subject-select" class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 text-sm">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Task Title</label>
+                  <input type="text" id="planner-new-title" required class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-white outline-none focus:border-indigo-500/50 text-sm" placeholder="e.g. Study midterm practice questions">
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Due Date</label>
+                  <input type="date" id="planner-new-date" required class="w-full px-4 py-2.5 bg-[#111319] border border-white/5 rounded-xl text-[#F5F7FA] outline-none focus:border-indigo-500/50 text-sm">
+                </div>
+
+                <div class="pt-2">
+                  <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Log to Planner</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Tasks List Grid -->
+            <div class="col-span-2 space-y-4">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="list-todo" class="w-4 h-4 text-rose-400"></i>
+                <span>Task Board</span>
+              </h3>
+              
+              <div id="planner-tasks-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer Credit Lines -->
+  <footer class="py-6 px-8 border-t border-white/5 bg-[#090A0E] text-center text-xs text-gray-500">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <span>&copy; 2026 Tutor AI Academic Success Portal. All rights reserved.</span>
+      <div class="flex items-center gap-4">
+        <a href="http://localhost:8080/h2-console" target="_blank" class="hover:text-indigo-400 transition-all font-mono">H2 DB Console</a>
+        <span class="text-white/10">|</span>
+        <span class="font-mono text-indigo-500/80">JWT Secure Encryption Layer</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- DYNAMIC CLIENT GATE SCRIPT -->
+  <script>
+    // Configuration pointing back to our Spring Boot port 8080 backend
+    const API_BASE = 'http://localhost:8080/api';
+    
+    // Fallback static memory database state in case they run client-only or before turning on Spring Boot
+    let localDB = {
+      users: [],
+      subjects: [
+        { id: 'subj_cs', name: 'Computer Science (AI & Robotics)', color: 'emerald' },
+        { id: 'subj_math', name: 'Advanced Calculus', color: 'indigo' }
+      ],
+      notes: [],
+      flashcards: [],
+      plannerTasks: [],
+      activityLogs: [
+        { id: 'act_init', action: 'System Loaded', details: 'Initialized dynamic academic fallback mode', activityType: 'study', createdAt: new Date().toISOString() }
+      ],
+      notifications: [
+        { id: 'not_welcome', title: 'Welcome to Tutor AI!', message: 'Upload notes, extract plain-text from PDFs, ask Gemini summaries, and boost your GPA!', read: false, createdAt: new Date().toISOString() }
+      ]
+    };
+
+    let currentUser = null;
+    let fallbackMode = false;
+    let selectedView = 'dashboard';
+    let currentFlashcards = [];
+    let currentFlashcardIndex = 0;
+    let cardFlipped = false;
+
+    // Boot & Sync detection
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Test server connection
+      await testServerConnection();
+      
+      // Auto-load token session
+      const savedToken = localStorage.getItem('tutor_ai_auth_token');
+      const savedUser = localStorage.getItem('tutor_ai_user');
+      
+      if (savedToken && savedUser) {
+        currentUser = JSON.parse(savedUser);
+        showScreen('app-screen');
+        await retrieveAppData();
+      } else {
+        showScreen('auth-screen');
+      }
+      
+      lucide.createIcons();
+    });
+
+    async function testServerConnection() {
+      const syncBadge = document.getElementById('sync-badge');
+      const syncText = document.getElementById('sync-text');
+      
+      try {
+        const res = await fetch(`${API_BASE}/auth/session`, { method: 'GET' });
+        // Connection alive
+        fallbackMode = false;
+        syncBadge.className = "px-3 py-1 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5";
+        syncText.innerText = "Spring Boot Linked";
+      } catch (err) {
+        // Fallback offline Mode
+        fallbackMode = true;
+        syncBadge.className = "px-3 py-1 rounded-full text-xs font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-1.5";
+        syncText.innerText = "Active Offline Mode";
+        
+        // Setup local storage mock db if blank
+        if (!localStorage.getItem('tutor_ai_localdb')) {
+          localStorage.setItem('tutor_ai_localdb', JSON.stringify(localDB));
+        } else {
+          localDB = JSON.parse(localStorage.getItem('tutor_ai_localdb'));
+        }
+      }
+    }
+
+    function showScreen(screenId) {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-screen').classList.add('hidden');
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    // View Routing
+    function switchView(viewName) {
+      document.getElementById('view-dashboard').classList.add('hidden');
+      document.getElementById('view-subjects').classList.add('hidden');
+      document.getElementById('view-notes').classList.add('hidden');
+      document.getElementById('view-flashcards').classList.add('hidden');
+      document.getElementById('view-planner').classList.add('hidden');
+
+      // nav states reset
+      document.querySelectorAll('aside button').forEach(el => {
+        el.className = "flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium hover:bg-white/5 text-gray-400 hover:text-white transition-all text-left";
+      });
+
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+      document.getElementById(`nav-${viewName}`).className = "flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium bg-indigo-500/10 text-white border border-indigo-500/20 transition-all text-left";
+      selectedView = viewName;
+      
+      if (viewName === 'flashcards') {
+        renderFlashcards();
+      }
+    }
+
+    // Auth triggers
+    let isRegisterMode = false;
+    function switchAuthMode(mode) {
+      const uField = document.getElementById('username-field');
+      const submitBtn = document.getElementById('auth-submit-btn');
+      const tabLogin = document.getElementById('tab-login');
+      const tabRegister = document.getElementById('tab-register');
+
+      if (mode === 'register') {
+        isRegisterMode = true;
+        uField.classList.remove('hidden');
+        submitBtn.innerHTML = `<span>Create Account</span><i data-lucide="plus" class="w-4 h-4"></i>`;
+        tabRegister.className = "flex-1 pb-3 text-center text-sm font-medium border-b-2 border-indigo-500 text-white";
+        tabLogin.className = "flex-1 pb-3 text-center text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-all";
+      } else {
+        isRegisterMode = false;
+        uField.classList.add('hidden');
+        submitBtn.innerHTML = `<span>Sign In</span><i data-lucide="arrow-right" class="w-4 h-4"></i>`;
+        tabLogin.className = "flex-1 pb-3 text-center text-sm font-medium border-b-2 border-indigo-500 text-white";
+        tabRegister.className = "flex-1 pb-3 text-center text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-white transition-all";
+      }
+      lucide.createIcons();
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const username = document.getElementById('auth-username').value;
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+
+      if (fallbackMode) {
+        // Offline registration trigger
+        currentUser = {
+          id: 'user_local',
+          username: username || email.split('@')[0],
+          email: email,
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem('tutor_ai_auth_token', 'offline_local_signature');
+        localStorage.setItem('tutor_ai_user', JSON.stringify(currentUser));
+        showScreen('app-screen');
+        await retrieveAppData();
+      } else {
+        // Reach Spring Boot
+        const endpoint = isRegisterMode ? '/auth/register' : '/auth/login';
+        const bodyPayload = isRegisterMode ? { username, email, password } : { email, password };
+        
+        try {
+          const res = await fetch(`${API_BASE}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload)
+          });
+          const data = await res.json();
+          if (data.error) {
+            alert(data.error);
+            return;
+          }
+          currentUser = data.user;
+          localStorage.setItem('tutor_ai_auth_token', data.token);
+          localStorage.setItem('tutor_ai_user', JSON.stringify(currentUser));
+          showScreen('app-screen');
+          await retrieveAppData();
+        } catch (err) {
+          alert('Backend authentication failed. Operating in fallback offline mode.');
+        }
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('tutor_ai_auth_token');
+      localStorage.removeItem('tutor_ai_user');
+      currentUser = null;
+      showScreen('auth-screen');
+    }
+
+    // Load dynamic UI data
+    async function retrieveAppData() {
+      document.getElementById('user-display-name').innerText = currentUser.username;
+      document.getElementById('user-display-email').innerText = currentUser.email;
+
+      if (fallbackMode) {
+        renderDashboardStats();
+        renderSubjects();
+        renderNotes();
+        renderPlannerTasks();
+      } else {
+        // fetch from actual Spring Boot REST APIs
+        try {
+          const headers = { 'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}` };
+          
+          const sRes = await fetch(`${API_BASE}/subjects`, { headers });
+          const subjectData = await sRes.json();
+          localDB.subjects = subjectData;
+
+          const nRes = await fetch(`${API_BASE}/notes`, { headers });
+          const noteData = await nRes.json();
+          localDB.notes = noteData;
+
+          const fRes = await fetch(`${API_BASE}/flashcards`, { headers });
+          const cardData = await fRes.json();
+          localDB.flashcards = cardData;
+
+          const pRes = await fetch(`${API_BASE}/planner-tasks`, { headers });
+          const taskData = await pRes.json();
+          localDB.plannerTasks = taskData;
+
+          const logRes = await fetch(`${API_BASE}/activity-logs`, { headers });
+          const logData = await logRes.json();
+          localDB.activityLogs = logData;
+
+          const notificationsRes = await fetch(`${API_BASE}/notifications`, { headers });
+          const notificationsData = await notificationsRes.json();
+          localDB.notifications = notificationsData;
+
+          renderDashboardStats();
+          renderSubjects();
+          renderNotes();
+          renderPlannerTasks();
+        } catch (e) {
+          console.warn('Network fetching error, reloading mock fallback panels.');
+        }
+      }
+    }
+
+    function renderDashboardStats() {
+      document.getElementById('metric-subjects').innerText = localDB.subjects.length;
+      document.getElementById('metric-notes').innerText = localDB.notes.length;
+      document.getElementById('metric-flashcards').innerText = localDB.flashcards.length;
+      document.getElementById('metric-tasks').innerText = localDB.plannerTasks.length;
+
+      // Render Logs
+      const logsBox = document.getElementById('activity-logs-container');
+      logsBox.innerHTML = '';
+      localDB.activityLogs.slice().reverse().forEach(log => {
+        const date = new Date(log.createdAt).toLocaleTimeString();
+        logsBox.innerHTML += `
+          <div class="p-2 border-b border-white/5 flex justify-between tracking-wide">
+            <div>
+              <span class="text-indigo-400 font-bold">[${log.action}]</span>
+              <span class="text-gray-300 ml-2">${log.details}</span>
+            </div>
+            <span class="text-gray-500 font-mono">${date}</span>
+          </div>
+        `;
+      });
+
+      // Render Notifications
+      const notList = document.getElementById('notifications-list');
+      notList.innerHTML = '';
+      localDB.notifications.forEach(not => {
+        notList.innerHTML += `
+          <div class="p-3 bg-[#13161F] border border-white/5 rounded-lg text-xs space-y-1">
+            <span class="font-bold text-white block">${not.title}</span>
+            <p class="text-gray-400">${not.message}</p>
+          </div>
+        `;
+      });
+
+      fetchRecommendations();
+    }
+
+    async function fetchRecommendations() {
+      const box = document.getElementById('dashboard-ai-recommendations');
+      if (fallbackMode) {
+        box.innerText = `Based on your focus areas (${localDB.subjects.map(s => s.name).join(', ')}), keep reviewing active flashcards weekly to solidify memory recall before midterms!`;
+      } else {
+        try {
+          const headers = { 'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}` };
+          const res = await fetch(`${API_BASE}/dashboard/recommendations`, { headers });
+          const data = await res.json();
+          box.innerText = data.recommendations || "Review active subjects weekly.";
+        } catch {
+          box.innerText = "Keep consolidating active study note summaries regularly.";
+        }
+      }
+    }
+
+    // SUBJECTS CRUD
+    async function handleCreateSubject(e) {
+      e.preventDefault();
+      const name = document.getElementById('subject-new-title').value;
+      const color = document.getElementById('subject-new-color').value;
+
+      if (fallbackMode) {
+        const nSub = { id: `subj_${Date.now()}`, name, color };
+        localDB.subjects.push(nSub);
+        localDB.activityLogs.push({ id: `act_${Date.now()}`, action: 'Created Subject', details: `Added custom subject: ${name}`, createdAt: new Date().toISOString() });
+        saveLocalDB();
+        await retrieveAppData();
+      } else {
+        try {
+          const headers = { 
+            'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}`,
+            'Content-Type': 'application/json'
+          };
+          await fetch(`${API_BASE}/subjects`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ name, color })
+          });
+          await retrieveAppData();
+        } catch {
+          alert('Failed to connect to backend repository.');
+        }
+      }
+      document.getElementById('subject-new-title').value = '';
+    }
+
+    function renderSubjects() {
+      const grid = document.getElementById('subjects-grid');
+      grid.innerHTML = '';
+      
+      const selectNote = document.getElementById('notes-subject-select');
+      const selectTask = document.getElementById('planner-subject-select');
+      
+      selectNote.innerHTML = '';
+      selectTask.innerHTML = '';
+
+      localDB.subjects.forEach(sub => {
+        const colorClasses = sub.color === 'emerald' ? 'border-emerald-500/20 text-emerald-400 bg-emerald-500/5' :
+                             sub.color === 'amber' ? 'border-amber-500/20 text-amber-400 bg-amber-500/5' :
+                             sub.color === 'rose' ? 'border-rose-500/20 text-rose-400 bg-rose-500/5' :
+                             'border-indigo-500/20 text-indigo-400 bg-indigo-500/5';
+        
+        grid.innerHTML += `
+          <div class="p-5 bg-[#181C26] border border-white/5 rounded-xl flex items-center justify-between shadow-md">
+            <div>
+              <h3 class="text-sm font-bold text-white">${sub.name}</h3>
+              <span class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-mono leading-none ${colorClasses}">
+                ${sub.color.toUpperCase()} GLOW
+              </span>
+            </div>
+            <div class="px-3 py-2 bg-white/5 rounded-xl"><i data-lucide="book-open" class="w-4 h-4 text-gray-400"></i></div>
+          </div>
+        `;
+
+        selectNote.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
+        selectTask.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
+      });
+      lucide.createIcons();
+    }
+
+    // NOTES SECTION
+    async function handleCreateNote() {
+      const subjectId = document.getElementById('notes-subject-select').value;
+      const title = document.getElementById('notes-new-title').value;
+      const content = document.getElementById('notes-new-content').value;
+
+      if (!title || !content) {
+        alert('Please fill out the note title & core content.');
+        return;
+      }
+
+      if (fallbackMode) {
+        // mock generation of summary + vocab + flashcards
+        const mockNote = {
+          id: `note_${Date.now()}`,
+          subjectId,
+          title,
+          content,
+          summary: `This material reviews key structures, terminologies, and algorithms of "${title}".`,
+          isPdf: false,
+          createdAt: new Date().toISOString()
+        };
+        localDB.notes.push(mockNote);
+        
+        // auto create 2 mock cards
+        localDB.flashcards.push({
+          id: `fc_${Date.now()}_1`,
+          subjectId,
+          noteId: mockNote.id,
+          question: `What primary thesis is studied in ${title}?`,
+          answer: `It details foundational theoretical architectures and operational paradigms in notes.`,
+          mastery: 'unfamiliar',
+          createdAt: new Date().toISOString()
+        });
+
+        localDB.activityLogs.push({ id: `act_${Date.now()}`, action: 'Created Note', details: `Added "${title}" with simulated AI summaries.`, createdAt: new Date().toISOString() });
+        saveLocalDB();
+        await retrieveAppData();
+      } else {
+        try {
+          const headers = { 
+            'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}`,
+            'Content-Type': 'application/json'
+          };
+          await fetch(`${API_BASE}/notes`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ subjectId, title, content })
+          });
+          await retrieveAppData();
+        } catch {
+          alert('Failed to submit learning note to server.');
+        }
+      }
+
+      document.getElementById('notes-new-title').value = '';
+      document.getElementById('notes-new-content').value = '';
+    }
+
+    async function handlePdfUpload(e) {
+      const file = e.target.files[0];
+      const subjectId = document.getElementById('notes-subject-select').value;
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const rawBase64 = reader.result.split(',')[1];
+        
+        if (fallbackMode) {
+          const mockNote = {
+            id: `note_pdf_${Date.now()}`,
+            subjectId,
+            title: file.name.replace(/\.pdf$/i, ''),
+            content: `Simulated layout text extraction of file: "${file.name}".`,
+            summary: `Automated summary of scanned textbook outline containing detailed references.`,
+            isPdf: true,
+            createdAt: new Date().toISOString()
+          };
+          localDB.notes.push(mockNote);
+          localDB.activityLogs.push({ id: `act_${Date.now()}`, action: 'Uploaded PDF', details: `Ingested textbook: ${file.name}.`, createdAt: new Date().toISOString() });
+          saveLocalDB();
+          await retrieveAppData();
+        } else {
+          try {
+            const headers = { 
+              'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}`,
+              'Content-Type': 'application/json'
+            };
+            await fetch(`${API_BASE}/notes/upload`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ fileName: file.name, fileDataB64: rawBase64, subjectId })
+            });
+            await retrieveAppData();
+          } catch {
+            alert('PDF extraction request to system failed.');
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderNotes() {
+      const list = document.getElementById('notes-library-list');
+      list.innerHTML = '';
+
+      if (localDB.notes.length === 0) {
+        list.innerHTML = `
+          <div class="col-span-2 text-center p-8 bg-[#181C26] border border-white/5 rounded-xl text-gray-500">
+            <i data-lucide="info" class="w-8 h-8 mx-auto stroke-1 mb-2"></i>
+            <p class="text-sm">No notes or PDF materials loaded in this active subject repo.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      localDB.notes.forEach(note => {
+        list.innerHTML += `
+          <div class="p-5 bg-[#181C26] border border-white/5 rounded-xl shadow-md space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded-md bg-[#1F2937]/50 text-indigo-400 text-[10px] uppercase font-mono font-bold">
+                ${note.isPdf ? 'PDF Text' : 'Text Note'}
+              </span>
+              <span class="text-[10px] text-gray-500 font-mono">${new Date(note.createdAt).toLocaleDateString()}</span>
+            </div>
+            
+            <h4 class="text-sm font-bold text-white line-clamp-1">${note.title}</h4>
+            <p class="text-xs text-gray-400 line-clamp-3 italic leading-relaxed">${note.summary || 'Summary pending processing...'}</p>
+            
+            <div class="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
+              <span class="flex items-center gap-1"><i data-lucide="hash" class="w-3.5 h-3.5"></i> ${note.id.substring(0, 10)}</span>
+              <button onclick="switchView('flashcards')" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 select-none">
+                <span>Quiz Cards</span>
+                <i data-lucide="arrow-right" class="w-3 h-3"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      lucide.createIcons();
+    }
+
+    // FLASHCARDS PORT
+    function renderFlashcards() {
+      currentFlashcards = localDB.flashcards;
+      currentFlashcardIndex = 0;
+      cardFlipped = false;
+      updateFlashcardUI();
+    }
+
+    function updateFlashcardUI() {
+      const board = document.getElementById('card-board');
+      const counter = document.getElementById('card-index-counter');
+      const masteryBadge = document.getElementById('level-mastery-badge');
+      const roleLabel = document.getElementById('card-role-label');
+      const payload = document.getElementById('card-main-payload');
+      const bar = document.getElementById('card-progress-bar');
+
+      if (currentFlashcards.length === 0) {
+        counter.innerText = "Review Deck Empty";
+        masteryBadge.innerText = " Flipped Cards: 0";
+        roleLabel.innerText = "REPOSITORY EMPTY";
+        payload.innerText = "Active recall deck is barren. Upload study guides or write summaries to synthesize quiz flashcards automatically!";
+        bar.style.width = `0%`;
+        return;
+      }
+
+      const activeCard = currentFlashcards[currentFlashcardIndex];
+      const percent = ((currentFlashcardIndex + 1) / currentFlashcards.length) * 100;
+      bar.style.width = `${percent}%`;
+
+      counter.innerText = `Card ${currentFlashcardIndex + 1} of ${currentFlashcards.length}`;
+      masteryBadge.innerText = `Mastery: ${activeCard.mastery.toUpperCase()}`;
+
+      if (cardFlipped) {
+        roleLabel.innerText = "ANSWER KEY";
+        payload.innerText = activeCard.answer;
+        board.className = "min-h-[280px] bg-indigo-950/20 border border-indigo-500/30 rounded-2xl cursor-pointer p-8 flex flex-col justify-between shadow-2xl relative transition-all group overflow-hidden select-none";
+      } else {
+        roleLabel.innerText = "QUESTION PROMPT";
+        payload.innerText = activeCard.question;
+        board.className = "min-h-[280px] bg-[#181C26] border border-white/5 hover:border-indigo-500/30 rounded-2xl cursor-pointer p-8 flex flex-col justify-between shadow-2xl relative transition-all group overflow-hidden select-none";
+      }
+    }
+
+    function flipActiveCard() {
+      if (currentFlashcards.length === 0) return;
+      cardFlipped = !cardFlipped;
+      updateFlashcardUI();
+    }
+
+    async function markActiveCardMastery(masteryState) {
+      if (currentFlashcards.length === 0) return;
+      const activeCard = currentFlashcards[currentFlashcardIndex];
+
+      if (fallbackMode) {
+        activeCard.mastery = masteryState;
+        localDB.activityLogs.push({ id: `act_${Date.now()}`, action: 'Reviewed Card', details: `Tested recall card as ${masteryState}.`, createdAt: new Date().toISOString() });
+        saveLocalDB();
+        await retrieveAppData();
+      } else {
+        try {
+          const headers = { 
+            'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}`,
+            'Content-Type': 'application/json'
+          };
+          await fetch(`${API_BASE}/flashcards/${activeCard.id}/review`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ mastery: masteryState })
+          });
+          await retrieveAppData();
+        } catch {
+          console.warn('Sync failed.');
+        }
+      }
+
+      // advance deck sliding
+      cardFlipped = false;
+      currentFlashcardIndex = (currentFlashcardIndex + 1) % currentFlashcards.length;
+      updateFlashcardUI();
+    }
+
+    // PLANNER PORT
+    async function handleCreateTask(e) {
+      e.preventDefault();
+      const subjectId = document.getElementById('planner-subject-select').value;
+      const title = document.getElementById('planner-new-title').value;
+      const dueDate = document.getElementById('planner-new-date').value;
+
+      if (fallbackMode) {
+        const mockTask = {
+          id: `task_${Date.now()}`,
+          subjectId,
+          title,
+          dueDate,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        };
+        localDB.plannerTasks.push(mockTask);
+        localDB.activityLogs.push({ id: `act_${Date.now()}`, action: 'Scheduled Task', details: `Added task: "${title}".`, createdAt: new Date().toISOString() });
+        saveLocalDB();
+        await retrieveAppData();
+      } else {
+        try {
+          const headers = { 
+            'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}`,
+            'Content-Type': 'application/json'
+          };
+          await fetch(`${API_BASE}/planner-tasks`, {
+            method: 'POST',
+            body: JSON.stringify({ subjectId, title, dueDate, description: "" }),
+            headers
+          });
+          await retrieveAppData();
+        } catch {
+          alert('Task scheduling connection failed.');
+        }
+      }
+
+      document.getElementById('planner-new-title').value = '';
+      document.getElementById('planner-new-date').value = '';
+    }
+
+    async function toggleTaskStatus(taskId, currentStatus) {
+      const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+
+      if (fallbackMode) {
+        const task = localDB.plannerTasks.find(t => t.id === taskId);
+        if (task) {
+          task.status = nextStatus;
+          saveLocalDB();
+          await retrieveAppData();
+        }
+      } else {
+        try {
+          const headers = { 
+            'Authorization': `Bearer ${localStorage.getItem('tutor_ai_auth_token')}`,
+            'Content-Type': 'application/json'
+          };
+          await fetch(`${API_BASE}/planner-tasks/${taskId}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ status: nextStatus })
+          });
+          await retrieveAppData();
+        } catch {
+          alert('Failed to synchronize status updating.');
+        }
+      }
+    }
+
+    function renderPlannerTasks() {
+      const list = document.getElementById('planner-tasks-list');
+      list.innerHTML = '';
+
+      if (localDB.plannerTasks.length === 0) {
+        list.innerHTML = `
+          <div class="text-center p-8 bg-[#181C26] border border-white/5 rounded-xl text-gray-500">
+            <i data-lucide="info" class="w-8 h-8 mx-auto stroke-1 mb-2"></i>
+            <p class="text-sm">Planner is blank. Create scheduled tasks on the sidebar form.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      localDB.plannerTasks.forEach(task => {
+        const done = task.status === 'completed';
+        const buttonClass = done ? 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20' : 'text-gray-400 bg-white/5 hover:bg-indigo-500/10 border border-white/5';
+        const textClass = done ? 'line-through text-gray-500' : 'text-white';
+        const iconName = done ? 'check-circle' : 'circle';
+
+        list.innerHTML += `
+          <div class="p-4 bg-[#181C26] border border-white/5 rounded-xl flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+              <button onclick="toggleTaskStatus('${task.id}', '${task.status}')" class="p-2 rounded-lg transition-all ${buttonClass}">
+                <i data-lucide="${iconName}" class="w-4 h-4"></i>
+              </button>
+              <div>
+                <span class="text-sm font-semibold transition-all ${textClass}">${task.title}</span>
+                <span class="block text-[10px] text-gray-500 font-mono mt-0.5">ASSOCIATED ID: ${task.subjectId}</span>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono leading-none bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                DUE: ${task.dueDate}
+              </span>
+            </div>
+          </div>
+        `;
+      });
+      lucide.createIcons();
+    }
+
+    // Offline caching saves
+    function saveLocalDB() {
+      localStorage.setItem('tutor_ai_localdb', JSON.stringify(localDB));
+    }
+  </script>
+</body>
+</html>

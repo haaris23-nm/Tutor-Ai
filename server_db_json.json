@@ -1,0 +1,264 @@
+{
+  "users": [
+    {
+      "id": "user_student1",
+      "username": "alex_student",
+      "email": "haarisrafi2006@gmail.com",
+      "createdAt": "2026-06-03T16:45:09.749Z"
+    },
+    {
+      "id": "user_1780505762079",
+      "username": "chandru",
+      "email": "chandruthor008@gmail.com",
+      "createdAt": "2026-06-03T16:56:02.079Z"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "subj_cs",
+      "userId": "user_student1",
+      "name": "Computer Science (AI & Robotics)",
+      "color": "emerald",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "subj_math",
+      "userId": "user_student1",
+      "name": "Advanced Calculus",
+      "color": "indigo",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "subj_physics",
+      "userId": "user_student1",
+      "name": "Quantum Mechanics",
+      "color": "rose",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "subj_1780505762079_cs",
+      "userId": "user_1780505762079",
+      "name": "Computer Science (AI & Robotics)",
+      "color": "emerald",
+      "createdAt": "2026-06-03T16:56:02.079Z"
+    },
+    {
+      "id": "subj_1780505762079_math",
+      "userId": "user_1780505762079",
+      "name": "Advanced Calculus",
+      "color": "indigo",
+      "createdAt": "2026-06-03T16:56:02.079Z"
+    }
+  ],
+  "notes": [
+    {
+      "id": "note_ai_intro",
+      "userId": "user_student1",
+      "subjectId": "subj_cs",
+      "title": "Introduction to Generative Models",
+      "content": "Generative models learn the underlying probability distribution of data. Large Language Models (LLMs) like Gemini use the Transformer architecture, utilizing self-attention mechanisms to weigh tokens and predict next sequences dynamically. Key parameter properties include temperature (controlling output entropy/randomness), topP (nucleus sampling threshold), and topK constraint.",
+      "summary": "Large Language Models (LLMs) find patterns in training data specifically utilizing self-attention mechanisms to produce coherent text output. This note covers foundational concepts including decoding configuration settings like temperature, topP, and topK.",
+      "vocabulary": [
+        {
+          "term": "Transformer Architecture",
+          "definition": "A deep-learning architecture utilizing self-attention mechanisms, designed primarily for sequential natural language processing."
+        },
+        {
+          "term": "Self-Attention",
+          "definition": "A technique that computes correlation scores among tokens, enabling models to relate words regardless of distance."
+        },
+        {
+          "term": "Temperature",
+          "definition": "A hyperparameter that scales candidate token logits, altering output creativity or precision."
+        }
+      ],
+      "flashcards": [
+        {
+          "question": "What architecture do models like Gemini rely on?",
+          "answer": "The Transformer architecture with self-attention algorithms."
+        },
+        {
+          "question": "What does low Temperature configuration produce?",
+          "answer": "Highly deterministic, precise, and less random text selections."
+        }
+      ],
+      "isPdf": false,
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    }
+  ],
+  "pdfDocuments": [],
+  "flashcards": [
+    {
+      "id": "fc_1",
+      "userId": "user_student1",
+      "subjectId": "subj_cs",
+      "noteId": "note_ai_intro",
+      "question": "What is Generative AI?",
+      "answer": "AI focused on creating new content like text, code, music, or images.",
+      "mastery": "known",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "fc_2",
+      "userId": "user_student1",
+      "subjectId": "subj_cs",
+      "noteId": "note_ai_intro",
+      "question": "Explain the role of top-p sampling.",
+      "answer": "It selects from the smallest set of words whose cumulative probability exceeds p.",
+      "mastery": "review",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "fc_3",
+      "userId": "user_student1",
+      "subjectId": "subj_math",
+      "question": "State the Fundamental Theorem of Calculus.",
+      "answer": "It connects differentiation and integration, proving that integration is the inverse of differentiation.",
+      "mastery": "unfamiliar",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    }
+  ],
+  "practiceExams": [
+    {
+      "id": "exam_ai_basics",
+      "noteId": "note_ai_intro",
+      "subjectId": "subj_cs",
+      "title": "Machine Learning Foundations Quiz",
+      "difficulty": "medium",
+      "questions": [
+        {
+          "id": "q_1",
+          "type": "mcq",
+          "question": "Which mechanism is fundamental to the Transformer neural network architecture?",
+          "options": [
+            "Convolution kernels",
+            "Self-attention mechanisms",
+            "Recurrent feedback loops",
+            "Random walk matrices"
+          ],
+          "correctAnswer": "Self-attention mechanisms"
+        },
+        {
+          "id": "q_2",
+          "type": "boolean",
+          "question": "Higher temperature scales logits causing responses to become more predictable.",
+          "correctAnswer": "False"
+        },
+        {
+          "id": "q_3",
+          "type": "short",
+          "question": "What term defines neural models generating plausible-sounding but factually incorrect assertions?",
+          "correctAnswer": "Hallucination"
+        }
+      ]
+    }
+  ],
+  "quizAttempts": [
+    {
+      "id": "att_1",
+      "userId": "user_student1",
+      "examId": "exam_ai_basics",
+      "subjectId": "subj_cs",
+      "title": "Machine Learning Foundations Quiz",
+      "score": 3,
+      "totalQuestions": 3,
+      "attemptedAt": "2026-06-03T16:39:09.750Z"
+    },
+    {
+      "id": "att_2",
+      "userId": "user_student1",
+      "examId": "exam_ai_basics",
+      "subjectId": "subj_cs",
+      "title": "Machine Learning Foundations Quiz",
+      "score": 2,
+      "totalQuestions": 3,
+      "attemptedAt": "2026-06-02T16:45:09.750Z"
+    }
+  ],
+  "studyPlans": [
+    {
+      "id": "plan_1",
+      "userId": "user_student1",
+      "title": "Calculus and AI Mastery Strategy",
+      "startDate": "2026-06-03",
+      "endDate": "2026-06-13",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    }
+  ],
+  "plannerTasks": [
+    {
+      "id": "task_1",
+      "userId": "user_student1",
+      "subjectId": "subj_cs",
+      "title": "Complete LLM Summary Review",
+      "description": "Read vocab list and memorize key metrics",
+      "dueDate": "2026-06-03",
+      "status": "pending",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "task_2",
+      "userId": "user_student1",
+      "subjectId": "subj_math",
+      "title": "Solve Derivative Set 4",
+      "description": "Page 31 exercises 1-15",
+      "dueDate": "2026-06-03",
+      "status": "active",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "task_3",
+      "userId": "user_student1",
+      "subjectId": "subj_physics",
+      "title": "Read Schrodinger Formula Basics",
+      "description": "Intro to quantum wavefunction notes",
+      "dueDate": "2026-06-03",
+      "status": "completed",
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    }
+  ],
+  "activityLogs": [
+    {
+      "id": "log_1",
+      "userId": "user_student1",
+      "action": "Account created",
+      "details": "Student registered successfully",
+      "activityType": "study",
+      "createdAt": "2026-06-01T16:45:09.750Z"
+    },
+    {
+      "id": "log_2",
+      "userId": "user_student1",
+      "action": "Note Created",
+      "details": "Added Study Note regarding Generative Models",
+      "activityType": "note",
+      "createdAt": "2026-06-02T16:45:09.750Z"
+    },
+    {
+      "id": "log_3",
+      "userId": "user_student1",
+      "action": "Completed Quiz",
+      "details": "Finished Machine Learning Foundations Quiz with 100% score",
+      "activityType": "quiz",
+      "createdAt": "2026-06-03T16:39:09.750Z"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "not_1",
+      "userId": "user_student1",
+      "title": "Welcome to Tutor AI!",
+      "message": "Upload notes, extract plain-text from PDFs, ask Gemini intelligent summaries, create cards, and boost your GPA!",
+      "read": false,
+      "createdAt": "2026-06-03T16:45:09.750Z"
+    },
+    {
+      "id": "not_1780505762079",
+      "userId": "user_1780505762079",
+      "title": "Welcome to Tutor AI!",
+      "message": "Great to have you! Tap \"Notes Repository\" to begin uploading study material or generate adaptive quizzes!",
+      "read": false,
+      "createdAt": "2026-06-03T16:56:02.079Z"
+    }
+  ]
+}

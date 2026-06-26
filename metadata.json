@@ -1,0 +1,6 @@
+{
+  "name": "Tutor AI",
+  "description": "Your Intelligent Academic Companion: manage subjects, notes, generate summaries, quizzes, flashcards, study plans and track academic progress in real time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
