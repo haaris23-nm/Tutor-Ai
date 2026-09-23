@@ -9,7 +9,8 @@ interface NotesRepositoryProps {
   onCreateSubject: (name: string, color: string) => Promise<any>;
   onCreateNote: (subjectId: string, title: string, content: string) => Promise<any>;
   onUploadPdf: (fileName: string, base64: string, subjectId: string) => Promise<any>;
-  onImportOnline: (title: string, subjectId: string, customSubjectName?: string) => Promise<any>;
+  onImportOnline: (title: string, subjectId: string, customSubjectName?: string, source?: string, pageid?: string | number, snippet?: string) => Promise<any>;
+  authToken?: string;
 }
 
 export function NotesRepositoryView({
@@ -18,7 +19,8 @@ export function NotesRepositoryView({
   onCreateSubject,
   onCreateNote,
   onUploadPdf,
-  onImportOnline
+  onImportOnline,
+  authToken
 }: NotesRepositoryProps) {
   // Navigation states
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
@@ -36,38 +38,65 @@ export function NotesRepositoryView({
   const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
 
-  // Wikipedia Search Modal states
+  // Online Notes Search Modal states
   const [showImportModal, setShowImportModal] = useState(false);
   const [wikiSearchQuery, setWikiSearchQuery] = useState('');
-  const [wikiSearchResults, setWikiSearchResults] = useState<{ title: string; snippet: string; pageid: number }[]>([]);
+  const [searchSourceTab, setSearchSourceTab] = useState<'all' | 'wikipedia' | 'wikibooks' | 'arxiv' | 'ai'>('all');
+  const [wikiSearchResults, setWikiSearchResults] = useState<{ id: string; title: string; snippet: string; source: string; sourceLabel: string; pageid?: number }[]>([]);
   const [isSearchingWiki, setIsSearchingWiki] = useState(false);
-  const [selectedWikiArticle, setSelectedWikiArticle] = useState<{ title: string; snippet: string } | null>(null);
+  const [selectedWikiArticle, setSelectedWikiArticle] = useState<{ id: string; title: string; snippet: string; source: string; sourceLabel: string; pageid?: number } | null>(null);
   const [importSubjectId, setImportSubjectId] = useState('');
   const [importCustomSubjectName, setImportCustomSubjectName] = useState('');
   const [isImportingWiki, setIsImportingWiki] = useState(false);
   const [wikiErrorMessage, setWikiErrorMessage] = useState('');
 
-  // Upload progress states
+  // Upload progress & drag states
   const [isDragging, setIsDragging] = useState(false);
   const [uploadQueue, setUploadQueue] = useState<{ name: string; progress: number; status: 'loading' | 'success' | 'error'; errorMsg?: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleWikiSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!wikiSearchQuery.trim()) return;
+  // Popular quick study topic pills
+  const popularTopics = [
+    'Photosynthesis', 'Neural Networks', 'Calculus Integration',
+    'Quantum Mechanics', 'DNA Replication', 'World War II',
+    'Macroeconomics', 'Python Data Structures'
+  ];
+
+  const handleWikiSearch = async (e?: React.FormEvent, customQuery?: string, customSource?: string) => {
+    if (e) e.preventDefault();
+    const queryToUse = customQuery !== undefined ? customQuery : wikiSearchQuery;
+    const sourceToUse = customSource !== undefined ? customSource : searchSourceTab;
+
+    if (!queryToUse.trim()) return;
     setIsSearchingWiki(true);
     setWikiErrorMessage('');
     setWikiSearchResults([]);
     setSelectedWikiArticle(null);
+
     try {
-      const resp = await fetch(`/api/notes/search-online?q=${encodeURIComponent(wikiSearchQuery)}`);
+      const headers: Record<string, string> = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
+      const resp = await fetch(`/api/notes/search-online?q=${encodeURIComponent(queryToUse)}&source=${sourceToUse}`, {
+        headers,
+        credentials: 'include'
+      });
       if (!resp.ok) {
-        throw new Error('Wikipedia search query failed to resolve.');
+        const errData = await resp.json().catch(() => null);
+        throw new Error(errData?.error || 'Search query failed to connect.');
       }
       const data = await resp.json();
       setWikiSearchResults(data);
+      if (data && data.length > 0) {
+        setSelectedWikiArticle(data[0]);
+        if (!importSubjectId && selectedSubjectId) {
+          setImportSubjectId(selectedSubjectId);
+        }
+      }
     } catch (err: any) {
-      setWikiErrorMessage(err.message || 'Failed connecting to Wikipedia database.');
+      setWikiErrorMessage(err.message || 'Failed connecting to online study database.');
     } finally {
       setIsSearchingWiki(false);
     }
@@ -76,10 +105,9 @@ export function NotesRepositoryView({
   const handleWikiImport = async () => {
     if (!selectedWikiArticle) return;
     
-    // Default import subject color or create custom
     const finalSubId = importSubjectId || selectedSubjectId;
     if (!finalSubId) {
-      alert('Please pick an Academic Subject directory, or enter a custom subject name.');
+      alert('Please pick an Academic Subject folder, or enter a custom subject name.');
       return;
     }
     if (finalSubId === 'custom' && !importCustomSubjectName.trim()) {
@@ -93,21 +121,22 @@ export function NotesRepositoryView({
       const note = await onImportOnline(
         selectedWikiArticle.title,
         finalSubId,
-        finalSubId === 'custom' ? importCustomSubjectName : undefined
+        finalSubId === 'custom' ? importCustomSubjectName : undefined,
+        selectedWikiArticle.source,
+        selectedWikiArticle.pageid,
+        selectedWikiArticle.snippet
       );
       
-      // Update active note details to focus user immediately
       setActiveNote(note);
       setShowImportModal(false);
       
-      // Clear input fields
       setWikiSearchQuery('');
       setWikiSearchResults([]);
       setSelectedWikiArticle(null);
       setImportSubjectId('');
       setImportCustomSubjectName('');
     } catch (err: any) {
-      setWikiErrorMessage(err.message || 'Wikipedia import or AI analysis crashed. Verify your keys.');
+      setWikiErrorMessage(err.message || 'Import failed. Please check your connection.');
     } finally {
       setIsImportingWiki(false);
     }
@@ -684,13 +713,13 @@ export function NotesRepositoryView({
           </motion.div>
         </div>
       )}
-      {/* 3. Modal: Wikipedia Search & Import Online Notes */}
+      {/* 3. Modal: Search & Import Online Academic Notes */}
       {showImportModal && (
         <div className="fixed inset-0 bg-[#0F1117]/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-2xl bg-[#181C25] rounded-3xl border border-white/5 p-6 space-y-5 shadow-2xl flex flex-col max-h-[90vh]"
+            className="w-full max-w-3xl bg-[#181C25] rounded-3xl border border-white/5 p-6 space-y-4 shadow-2xl flex flex-col max-h-[90vh]"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
@@ -714,78 +743,140 @@ export function NotesRepositoryView({
               </div>
             )}
 
-            {/* Stage 1: Search Form */}
-            <form onSubmit={handleWikiSearch} className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  required
-                  placeholder="Type academic topic... (e.g. Photosynthesis, General Relativity, Mitosis)"
-                  value={wikiSearchQuery}
-                  onChange={(e) => setWikiSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0F1117] border border-white/5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-sans"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isSearchingWiki}
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold font-sans transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1"
-              >
-                {isSearchingWiki ? 'Searching...' : 'Explore'}
-              </button>
-            </form>
+            {/* Search Input Bar */}
+            <div className="space-y-2">
+              <form onSubmit={handleWikiSearch} className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Search any topic, class, or paper... (e.g. Photosynthesis, Neural Networks, Calculus)"
+                    value={wikiSearchQuery}
+                    onChange={(e) => setWikiSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0F1117] border border-white/5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-sans"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSearchingWiki}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold font-sans transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1.5 shadow-[0_4px_12px_rgba(99,102,241,0.25)]"
+                >
+                  {isSearchingWiki ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  <span>{isSearchingWiki ? 'Searching...' : 'Explore'}</span>
+                </button>
+              </form>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 flex-1 min-h-0 overflow-y-auto">
+              {/* Source Filter Tabs */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-1">
+                  {[
+                    { id: 'all', label: 'All Sources' },
+                    { id: 'wikipedia', label: 'Wikipedia' },
+                    { id: 'wikibooks', label: 'Wikibooks' },
+                    { id: 'arxiv', label: 'ArXiv Papers' },
+                    { id: 'ai', label: 'AI Generator' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setSearchSourceTab(tab.id as any);
+                        if (wikiSearchQuery.trim()) {
+                          handleWikiSearch(undefined, wikiSearchQuery, tab.id);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-medium border transition cursor-pointer ${searchSourceTab === tab.id ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold' : 'bg-white/2 border-white/5 text-[#94A3B8] hover:text-white'}`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <span className="text-[10px] font-mono text-[#94A3B8]">
+                  {wikiSearchResults.length > 0 ? `${wikiSearchResults.length} notes found` : 'Multi-database integration active'}
+                </span>
+              </div>
+
+              {/* Quick Topic Suggestion Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+                <span className="text-[10px] font-mono text-gray-400 whitespace-nowrap">Quick Topics:</span>
+                {popularTopics.map((topic, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setWikiSearchQuery(topic);
+                      handleWikiSearch(undefined, topic, searchSourceTab);
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-[#0F1117] hover:bg-white/5 border border-white/10 text-[10px] text-gray-300 hover:text-white whitespace-nowrap transition cursor-pointer"
+                  >
+                    ✨ {topic}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0 overflow-y-auto">
               {/* Left column: Search Results */}
               <div className="flex flex-col space-y-2 min-h-0">
                 <span className="text-[10px] font-mono font-semibold tracking-wider text-[#94A3B8] uppercase block">
-                  Search Results ({wikiSearchResults.length})
+                  Search Results
                 </span>
                 <div className="flex-1 overflow-y-auto space-y-2 bg-[#0F1117]/60 rounded-2xl p-2 border border-white/5 max-h-[300px]">
                   {isSearchingWiki ? (
                     <div className="flex flex-col items-center justify-center h-full py-12 text-[#94A3B8] text-xs gap-3 font-mono">
                       <RefreshCw className="w-6 h-6 animate-spin text-indigo-400" />
-                      <span>Synthesizing index list...</span>
+                      <span>Searching across Wikipedia, Wikibooks, ArXiv & AI...</span>
                     </div>
                   ) : wikiSearchResults.length > 0 ? (
-                    wikiSearchResults.map((item, idx) => (
+                    wikiSearchResults.map((item) => (
                       <div
-                        key={idx}
+                        key={item.id}
                         onClick={() => {
-                          setSelectedWikiArticle({ title: item.title, snippet: item.snippet });
-                          // Set default import class subject choice
+                          setSelectedWikiArticle(item);
                           if (!importSubjectId && selectedSubjectId) {
                             setImportSubjectId(selectedSubjectId);
                           }
                         }}
-                        className={`p-3 rounded-xl border text-left cursor-pointer transition ${selectedWikiArticle?.title === item.title ? 'bg-indigo-600/10 border-indigo-505 text-white' : 'bg-[#0F1117] border-white/5 hover:border-white/10 text-gray-300'}`}
+                        className={`p-3 rounded-xl border text-left cursor-pointer transition space-y-1.5 ${selectedWikiArticle?.id === item.id ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md' : 'bg-[#0F1117] border-white/5 hover:border-white/10 text-gray-300'}`}
                       >
-                        <h4 className="text-xs font-bold leading-tight flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-indigo-450" />
-                          {item.title}
-                        </h4>
-                        <p className="text-[11px] text-[#94A3B8] mt-1 line-clamp-2 leading-normal">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold leading-tight flex items-center gap-1.5 text-white">
+                            <BookOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="truncate">{item.title}</span>
+                          </h4>
+                          <span className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-md border uppercase tracking-wider shrink-0 ${item.source === 'wikipedia' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : item.source === 'wikibooks' ? 'bg-emerald-500/10 text-[#00C47A] border-emerald-500/30' : item.source === 'arxiv' ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
+                            {item.sourceLabel || item.source}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#94A3B8] line-clamp-2 leading-relaxed">
                           {item.snippet}
                         </p>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-12 text-[#94A3B8] text-xs font-sans">
-                      No matching records. Enter an academic topic above and click Explore!
+                    <div className="text-center py-12 text-[#94A3B8] text-xs font-sans space-y-2">
+                      <Globe className="w-8 h-8 text-white/10 mx-auto" />
+                      <p>Type a topic or click a Quick Topic pill above to search instantly!</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Right column: Import Options */}
+              {/* Right column: Target Folder & Import Execution */}
               <div className="flex flex-col space-y-3 justify-between bg-[#0F1117]/40 p-4 border border-white/5 rounded-2xl">
                 {selectedWikiArticle ? (
                   <div className="space-y-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      <span className="text-[10px] font-mono text-indigo-450 uppercase font-semibold">Selected Topic</span>
-                      <h4 className="text-sm font-bold text-white mt-1">{selectedWikiArticle.title}</h4>
-                      <p className="text-xs text-[#94A3B8] line-clamp-3 mt-1 leading-normal italic">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-indigo-400 uppercase font-semibold">Selected Reference</span>
+                        <span className="text-[9px] font-mono text-[#00C47A] bg-[#00C47A]/10 border border-[#00C47A]/20 px-2 py-0.5 rounded-full">
+                          Ready to Import
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white">{selectedWikiArticle.title}</h4>
+                      <p className="text-xs text-[#94A3B8] line-clamp-4 leading-relaxed italic bg-[#0F1117] p-2.5 rounded-xl border border-white/5">
                         "{selectedWikiArticle.snippet}"
                       </p>
                     </div>
@@ -796,7 +887,7 @@ export function NotesRepositoryView({
                         <select
                           value={importSubjectId || selectedSubjectId}
                           onChange={(e) => setImportSubjectId(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-[#0F1117] border border-white/5 text-xs text-white focus:outline-none focus:border-indigo-550"
+                          className="w-full px-3 py-2 rounded-xl bg-[#0F1117] border border-white/5 text-xs text-white focus:outline-none focus:border-indigo-500"
                         >
                           <option value="">-- Choose Target Folder --</option>
                           {subjects.map((s) => (
@@ -837,7 +928,7 @@ export function NotesRepositoryView({
                       ) : (
                         <>
                           <Brain className="w-3.5 h-3.5" />
-                          Syndicate & Generate AI Summary
+                          Import Note & Generate AI Flashcards
                         </>
                       )}
                     </button>
@@ -846,7 +937,7 @@ export function NotesRepositoryView({
                   <div className="h-full flex flex-col items-center justify-center text-[#94A3B8] text-xs text-center py-12 px-2">
                     <Globe className="w-8 h-8 text-white/5 mb-3 animate-pulse" />
                     <p className="font-sans leading-relaxed">
-                      Select an article from search results to configure target syllabus folders and import options.
+                      Select an article or AI guide from the search results to configure target syllabus folders and import options.
                     </p>
                   </div>
                 )}

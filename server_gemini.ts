@@ -190,6 +190,38 @@ export async function generateStudyRecommendations(userHistory: string): Promise
   }
 }
 
+// 4. Generate Comprehensive Full Study Guide for Online Topic Import
+export async function generateFullStudyGuide(topic: string): Promise<string> {
+  const client = getGeminiClient();
+  if (!client) {
+    return `# Comprehensive Study Guide: ${topic}\n\n## Executive Overview\n${topic} is a fundamental concept in modern academic curricula. Understanding its core principles, formulas, and structural behavior is essential for exam readiness.\n\n## Core Principles & Key Concepts\n- **Definition & Scope**: ${topic} encompasses systematic analysis of key variables, underlying mechanisms, and theoretical frameworks.\n- **Key Characteristics**: Structural properties, input-output transformations, and system dynamics.\n- **Methodology**: Analytical approaches involve breaking down complex problems into modular steps.\n\n## Key Formulas / Terms & Definitions\n- **Primary Mechanism**: The main process governing ${topic}.\n- **Secondary Interaction**: How ${topic} relates to adjacent topics within the discipline.\n\n## Exam Review & Key Takeaways\n1. Review core terminology and construct mental diagrams.\n2. Focus on active recall for main definitions and exam applications.`;
+  }
+
+  try {
+    const prompt = `You are an expert academic professor and study guide author.
+Create a comprehensive, textbook-quality, well-structured study guide on the academic topic: "${topic}".
+
+Format the output in clear, clean markdown with headings, bullet points, key definitions, and important takeaways:
+- ## Executive Overview
+- ## Core Principles & Key Concepts (detailed bullet points)
+- ## Key Formulas, Terms & Mechanisms
+- ## Practical Applications & Examples
+- ## Exam Review Summary
+
+Keep it highly educational, clear, and comprehensive (approx 350-500 words).`;
+
+    const response = await client.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt
+    });
+
+    return response.text?.trim() || `# Study Guide: ${topic}\n\nKey academic principles for ${topic}.`;
+  } catch (err) {
+    console.error('Gemini generateFullStudyGuide error:', err);
+    return `# Study Guide: ${topic}\n\nKey academic principles for ${topic}.`;
+  }
+}
+
 
 /* --- SEAMLESS HIGH QUALITY ACADEMIC MOCK FALLBACKS --- */
 

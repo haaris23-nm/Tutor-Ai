@@ -314,14 +314,21 @@ export default function App() {
     return note;
   };
 
-  const handleImportOnlineNote = async (title: string, subjectId: string, customSubjectName?: string) => {
+  const handleImportOnlineNote = async (
+    title: string,
+    subjectId: string,
+    customSubjectName?: string,
+    source?: string,
+    pageid?: string | number,
+    snippet?: string
+  ) => {
     const resp = await fetch('/api/notes/import-online', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ title, subjectId, customSubjectName })
+      body: JSON.stringify({ title, subjectId, customSubjectName, source, pageid, snippet })
     });
     if (!resp.ok) {
       const errObj = await resp.json();
@@ -673,6 +680,7 @@ export default function App() {
                   onCreateNote={handleAddNewNote}
                   onUploadPdf={handleUploadPdfMaterial}
                   onImportOnline={handleImportOnlineNote}
+                  authToken={token || undefined}
                 />
               )}
 

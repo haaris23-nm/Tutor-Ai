@@ -8,7 +8,7 @@ import { createServer as createViteServer } from 'vite';
 import { readDatabase, writeDatabase, initializeDatabase } from './server_db';
 import { createToken, verifyToken, authenticateUser } from './server_auth';
 import { extractTextFromPdf } from './server_pdf';
-import { generateAcademicMetadata, generatePracticeExam, generateStudyRecommendations } from './server_gemini';
+import { generateAcademicMetadata, generatePracticeExam, generateStudyRecommendations, generateFullStudyGuide } from './server_gemini';
 import { Subject, Note, Flashcard, PracticeExam, QuizAttempt, PlannerTask, ActivityLog } from './src/types';
 
 // Boot systems
@@ -337,50 +337,134 @@ app.post('/api/notes/upload', authenticateUser, async (req, res) => {
 });
 
 
-/* --- ONLINE NOTES & WIKIPEDIA SYNDICATION ENDPOINTS --- */
+/* --- ONLINE NOTES & MULTI-SOURCE ACADEMIC SEARCH ENDPOINTS --- */
+
+function stripHtml(htmlStr: string): string {
+  if (!htmlStr) return '';
+  return htmlStr.replace(/<\/?[^>]+(>|$)/g, '').trim();
+}
 
 app.get('/api/notes/search-online', authenticateUser, async (req, res) => {
-  const query = req.query.q as string;
+  const query = (req.query.q as string) || '';
+  const sourceFilter = (req.query.source as string) || 'all';
+
   if (!query || query.trim() === '') {
     return res.status(400).json({ error: 'Search query is required' });
   }
 
-  try {
-    const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error('Wikipedia search API failed');
-    }
-    const data = await response.json();
-    const results = (data.query?.search || []).map((item: any) => ({
-      title: item.title,
-      snippet: item.snippet.replace(/<\/?[^>]+(>|$)/g, ""), // strip HTML tags
-      pageid: item.pageid
-    }));
-    return res.json(results);
-  } catch (err: any) {
-    console.error('Online notes search error:', err);
-    return res.status(500).json({ error: 'Failed to query online notes database' });
+  const cleanQuery = query.trim();
+  const results: any[] = [];
+
+  // 1. Always offer an AI Knowledge Generator Option as featured card
+  results.push({
+    id: `ai_gen_${Date.now()}`,
+    title: `${cleanQuery} (Full AI Study Guide)`,
+    snippet: `Synthesize a comprehensive, textbook-quality study guide with core concepts, formulas, vocabulary, and flashcards for "${cleanQuery}".`,
+    source: 'ai',
+    sourceLabel: 'AI Knowledge Generator'
+  });
+
+  const promises: Promise<any>[] = [];
+
+  const userAgentHeaders = {
+    'User-Agent': 'TutorAI/1.0 (Academic Study Assistant; contact@tutor.ai)'
+  };
+
+  // Wikipedia Search
+  if (sourceFilter === 'all' || sourceFilter === 'wikipedia') {
+    promises.push(
+      fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery)}&format=json&origin=*`, { headers: userAgentHeaders })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.query?.search) {
+            data.query.search.slice(0, 5).forEach((item: any) => {
+              results.push({
+                id: `wiki_${item.pageid}`,
+                title: item.title,
+                snippet: stripHtml(item.snippet),
+                source: 'wikipedia',
+                sourceLabel: 'Wikipedia',
+                pageid: item.pageid
+              });
+            });
+          }
+        })
+        .catch(err => console.error('Wikipedia search error:', err))
+    );
   }
+
+  // Wikibooks Search (Open Textbooks & Study Notes)
+  if (sourceFilter === 'all' || sourceFilter === 'wikibooks') {
+    promises.push(
+      fetch(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery)}&format=json&origin=*`, { headers: userAgentHeaders })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.query?.search) {
+            data.query.search.slice(0, 5).forEach((item: any) => {
+              results.push({
+                id: `wb_${item.pageid}`,
+                title: item.title,
+                snippet: stripHtml(item.snippet) || `Open Wikibooks textbook notes for ${item.title}.`,
+                source: 'wikibooks',
+                sourceLabel: 'Wikibooks Textbook',
+                pageid: item.pageid
+              });
+            });
+          }
+        })
+        .catch(err => console.error('Wikibooks search error:', err))
+    );
+  }
+
+  // ArXiv Open Science Repository Search (Physics, CS, Math, Bio)
+  if (sourceFilter === 'all' || sourceFilter === 'arxiv') {
+    promises.push(
+      fetch(`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(cleanQuery)}&start=0&max_results=4`, { headers: userAgentHeaders })
+        .then(r => r.ok ? r.text() : null)
+        .then(xmlText => {
+          if (xmlText) {
+            const entryRegex = /<entry>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<summary>([\s\S]*?)<\/summary>[\s\S]*?<\/entry>/gi;
+            let match;
+            let count = 0;
+            while ((match = entryRegex.exec(xmlText)) !== null && count < 4) {
+              const rawTitle = match[1].replace(/\n/g, ' ').trim();
+              const rawSummary = match[2].replace(/\n/g, ' ').trim();
+              results.push({
+                id: `arxiv_${Date.now()}_${count}`,
+                title: rawTitle,
+                snippet: rawSummary.length > 180 ? rawSummary.substring(0, 180) + '...' : rawSummary,
+                source: 'arxiv',
+                sourceLabel: 'ArXiv Science Paper'
+              });
+              count++;
+            }
+          }
+        })
+        .catch(err => console.error('ArXiv search error:', err))
+    );
+  }
+
+  await Promise.allSettled(promises);
+  return res.json(results);
 });
 
 app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
   try {
-    const { title, subjectId, customSubjectName } = req.body;
-    if (!title) {
-      return res.status(400).json({ error: 'Wikipedia article title is required.' });
+    const { title, source, subjectId, customSubjectName, pageid, snippet } = req.body;
+    if (!title || title.trim() === '') {
+      return res.status(400).json({ error: 'Article or note title is required.' });
     }
 
+    const cleanTitle = title.trim();
     const db = readDatabase();
     let finalSubjectId = subjectId;
 
-    // Handle inline creation of a brand new, custom subject
+    // Handle inline creation of custom subject
     if (subjectId === 'custom') {
       if (!customSubjectName || customSubjectName.trim() === '') {
         return res.status(400).json({ error: 'A valid custom subject name is required.' });
       }
 
-      // Check if user already has a subject with this name (case-insensitive)
       const existingSubj = db.subjects.find(
         s => s.userId === req.user!.id && s.name.toLowerCase() === customSubjectName.trim().toLowerCase()
       );
@@ -388,8 +472,7 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
       if (existingSubj) {
         finalSubjectId = existingSubj.id;
       } else {
-        // Create subject
-        const colors = ['#00C47A', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#EF4444', '#06B6D4'];
+        const colors = ['emerald', 'indigo', 'rose', 'amber', 'purple', 'cyan'];
         const randomColor = colors[Math.floor(Math.random() * colors.length)];
         const newSubj = {
           id: `subj_${Date.now()}`,
@@ -400,42 +483,69 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
         };
         db.subjects.push(newSubj);
         finalSubjectId = newSubj.id;
-        
-        // Broadcast new subject
         broadcastToUser(req.user!.id, { type: 'SUBJECT_CREATED', payload: newSubj });
       }
     }
 
     if (!finalSubjectId) {
-      return res.status(400).json({ error: 'Select a subject, or enter a custom subject name.' });
+      return res.status(400).json({ error: 'Please select a subject folder, or enter a custom subject name.' });
     }
 
-    // Now, fetch the summary/extract from Wikipedia REST API
-    const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
-    const wikiRes = await fetch(wikiUrl);
-    if (!wikiRes.ok) {
-      return res.status(500).json({ error: `Could not retrieve Wikipedia content for: ${title}` });
+    let rawContent = '';
+
+    // Fetch content based on source
+    if (source === 'wikipedia') {
+      try {
+        const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTitle.replace(/\s+/g, '_'))}`;
+        const wikiRes = await fetch(wikiUrl);
+        if (wikiRes.ok) {
+          const wikiData = await wikiRes.json();
+          rawContent = wikiData.extract || wikiData.description || '';
+        }
+      } catch (e) {
+        console.warn('Wikipedia REST summary failed, fallback to AI synthesis.');
+      }
+    } else if (source === 'wikibooks') {
+      try {
+        const wbUrl = `https://en.wikibooks.org/api/rest_v1/page/summary/${encodeURIComponent(cleanTitle.replace(/\s+/g, '_'))}`;
+        const wbRes = await fetch(wbUrl);
+        if (wbRes.ok) {
+          const wbData = await wbRes.json();
+          rawContent = wbData.extract || wbData.description || '';
+        }
+      } catch (e) {
+        console.warn('Wikibooks REST summary failed, fallback to AI synthesis.');
+      }
     }
-    
-    const wikiData = await wikiRes.json();
-    const content = wikiData.extract || `Wikipedia page for ${title}. Summary: ${wikiData.description || 'No direct summary is listed.'}`;
-    
-    // Synthesize academic metadata
+
+    // If source is 'arxiv', snippet contains full summary
+    if (source === 'arxiv' && snippet) {
+      rawContent = snippet;
+    }
+
+    // Fallback or AI Note Generation if content is missing or user requested AI Generator
+    if (source === 'ai' || !rawContent || rawContent.length < 50) {
+      const topicForAi = cleanTitle.replace(/\s*\(Full AI Study Guide\)$/i, '');
+      rawContent = await generateFullStudyGuide(topicForAi);
+    }
+
+    // Synthesize academic metadata (summary, vocab, flashcards)
     let aiMeta;
     try {
-      aiMeta = await generateAcademicMetadata(title, content);
+      aiMeta = await generateAcademicMetadata(cleanTitle, rawContent);
     } catch {
       aiMeta = { summary: '', vocabulary: [], flashcards: [] };
     }
 
     const noteId = `note_${Date.now()}`;
+    const cleanNoteTitle = cleanTitle.replace(/\s*\(Full AI Study Guide\)$/i, '');
     const newNote: Note = {
       id: noteId,
       userId: req.user!.id,
       subjectId: finalSubjectId,
-      title: title.trim(),
-      content: content.trim(),
-      summary: aiMeta.summary || wikiData.extract || 'AI summary generated.',
+      title: cleanNoteTitle,
+      content: rawContent.trim(),
+      summary: aiMeta.summary || 'AI-analyzed study note summary.',
       vocabulary: aiMeta.vocabulary || [],
       isPdf: false,
       isOnline: true,
@@ -445,9 +555,9 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
 
     db.notes.push(newNote);
 
-    // If Gemini returned flashcards, populate the user card decks as well
+    // If Gemini/fallback returned flashcards, insert them into user's flashcards deck
     if (aiMeta.flashcards && aiMeta.flashcards.length > 0) {
-      const generatedCards = aiMeta.flashcards.map((f: any, i: number) => ({
+      const generatedCards: Flashcard[] = aiMeta.flashcards.map((f: any, i: number) => ({
         id: `fc_${Date.now()}_${i}`,
         userId: req.user!.id,
         subjectId: finalSubjectId,
@@ -460,23 +570,21 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
       db.flashcards.push(...generatedCards);
     }
 
-    // Append to Activity Logs
+    // Log Activity
     db.activityLogs.push({
       id: `act_${Date.now()}`,
       userId: req.user!.id,
       action: 'Imported Online Note',
-      details: `Imported reference note "${newNote.title}" with AI summaries.`,
+      details: `Imported reference note "${newNote.title}" from ${source || 'online resource'}.`,
       activityType: 'note',
       createdAt: new Date().toISOString()
     });
 
     await writeDatabase(db);
-
-    // Notify connected client WS
     broadcastToUser(req.user!.id, { type: 'NOTE_CREATED', payload: newNote });
 
     return res.status(201).json(newNote);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Import online note error:', err);
     return res.status(500).json({ error: 'Failed to import and analyze online note.' });
   }
