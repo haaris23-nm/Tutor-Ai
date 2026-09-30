@@ -25,8 +25,33 @@ export interface Note {
   isPdf: boolean;
   pdfId?: string;
   isOnline?: boolean;
-  source?: 'custom' | 'online' | 'pdf';
+  source?: 'custom' | 'online' | 'pdf' | 'wikipedia' | 'wikibooks' | 'wikiversity' | 'openlibrary' | 'arxiv' | 'gutenberg' | 'crossref' | 'duckduckgo' | 'ai' | string;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  author?: string;
+  year?: string | number;
   createdAt: string;
+}
+
+export interface SearchOnlineResult {
+  id: string;
+  title: string;
+  snippet: string;
+  source: 'wikipedia' | 'wikibooks' | 'wikiversity' | 'openlibrary' | 'arxiv' | 'gutenberg' | 'crossref' | 'duckduckgo' | 'ai' | string;
+  sourceLabel: string;
+  sourceUrl?: string;
+  author?: string;
+  year?: string | number;
+  pageid?: number | string;
+  category?: string;
+  readTime?: string;
+}
+
+export interface OnlineSearchResponse {
+  results: SearchOnlineResult[];
+  responseTimeMs: number;
+  cached?: boolean;
+  total: number;
 }
 
 export interface PDFDocument {

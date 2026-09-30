@@ -320,7 +320,10 @@ export default function App() {
     customSubjectName?: string,
     source?: string,
     pageid?: string | number,
-    snippet?: string
+    snippet?: string,
+    sourceUrl?: string,
+    author?: string,
+    year?: string | number
   ) => {
     const resp = await fetch('/api/notes/import-online', {
       method: 'POST',
@@ -328,10 +331,20 @@ export default function App() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ title, subjectId, customSubjectName, source, pageid, snippet })
+      body: JSON.stringify({
+        title,
+        subjectId,
+        customSubjectName,
+        source,
+        pageid,
+        snippet,
+        sourceUrl,
+        author,
+        year
+      })
     });
     if (!resp.ok) {
-      const errObj = await resp.json();
+      const errObj = await resp.json().catch(() => ({}));
       throw new Error(errObj.error || 'Failed importing online note.');
     }
     const note = await resp.json();
@@ -339,14 +352,15 @@ export default function App() {
     // Refresh notes list dynamically
     setNotes(prev => [note, ...prev]);
     
-    // Refresh subjects if a new custom one was added inline
-    if (subjectId === 'custom' && token) {
-      const subjsRes = await fetch('/api/subjects', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(res => res.json());
-      if (Array.isArray(subjsRes)) {
-        setSubjects(subjsRes);
-      }
+    // Refresh subjects & flashcards if new subject was created or cards synthesized
+    if (token) {
+      fetch('/api/subjects', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setSubjects(data); });
+
+      fetch('/api/flashcards', { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => { if (Array.isArray(data)) setFlashcards(data); });
     }
     return note;
   };
@@ -681,6 +695,7 @@ export default function App() {
                   onUploadPdf={handleUploadPdfMaterial}
                   onImportOnline={handleImportOnlineNote}
                   authToken={token || undefined}
+                  onNavigate={setCurrentView}
                 />
               )}
 
