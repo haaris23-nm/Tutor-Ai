@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, CheckCircle2, Clock, Trophy, Wifi, WifiOff, RefreshCw, Calendar, ArrowRight, Zap, Globe } from 'lucide-react';
+import { BookOpen, CheckCircle2, Clock, Trophy, Wifi, WifiOff, RefreshCw, Calendar, ArrowRight, Zap } from 'lucide-react';
 import { SocketStatus, WebSocketEvent } from '../hooks/useWebSocketManager';
 import { Subject, PlannerTask, ActivityLog, QuizAttempt } from '../types';
 
@@ -54,16 +54,6 @@ export function DashboardView({
           <p className="text-[#94A3B8] text-sm max-w-xl">
             Your real-time co-pilot is tracking your active academic goals, revision flashcards, and quizzes. Ready to excel today?
           </p>
-        </div>
-
-        <div className="relative z-10 mt-4 md:mt-0 flex flex-wrap gap-2.5">
-          <button
-            onClick={() => onNavigate('notes')}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-sans text-xs font-semibold flex items-center gap-2 shadow-[0_4px_16px_rgba(99,102,241,0.3)] transition-all active:scale-95 cursor-pointer"
-          >
-            <Globe className="w-4 h-4 text-white" />
-            <span>Search 8 Online Repositories</span>
-          </button>
         </div>
       </div>
 
