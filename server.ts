@@ -11,9 +11,32 @@ import { extractTextFromPdf } from './server_pdf';
 import { generateAcademicMetadata, generatePracticeExam, generateStudyRecommendations, generateFullStudyGuide } from './server_gemini';
 import { Subject, Note, Flashcard, PracticeExam, QuizAttempt, PlannerTask, ActivityLog } from './src/types';
 
+import { adminAuth } from './src/lib/firebase-admin.ts';
+import { getOrCreateUser } from './src/db/users.ts';
+import {
+  fetchSubjects,
+  insertSubject,
+  fetchNotes,
+  insertNote,
+  fetchFlashcards,
+  insertFlashcards,
+  updateFlashcardMasteryRecord,
+  fetchPlannerTasks,
+  insertPlannerTask,
+  updatePlannerTaskStatusRecord,
+  fetchActivityLogs,
+  insertActivityLog,
+  fetchQuizAttempts,
+  insertQuizAttempt,
+  fetchNotifications,
+  insertNotification,
+  isCloudSqlActive
+} from './src/db/repository.ts';
+
 // Boot systems
 const dbState = initializeDatabase();
 console.log('Main DB Initialized safely. Users registered:', dbState.users.length);
+console.log('Cloud SQL Active Status:', isCloudSqlActive() ? 'YES (PostgreSQL connected)' : 'Local JSON fallback mode');
 
 const app = express();
 const PORT = 3000;
@@ -27,7 +50,62 @@ function hashString(str: string): string {
   return crypto.createHash('sha256').update(str).digest('hex');
 }
 
-/* --- JWT / AUTH ROUTES --- */
+/* --- FIREBASE & JWT AUTH ROUTES --- */
+
+// Google Sign-In with Firebase Authentication
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: 'Firebase ID token is required.' });
+
+    const decoded = await adminAuth.verifyIdToken(token);
+    const uid = decoded.uid;
+    const email = decoded.email || '';
+    const username = decoded.name || email.split('@')[0] || 'Learner';
+
+    if (isCloudSqlActive()) {
+      await getOrCreateUser(uid, email, username);
+    }
+
+    const db = readDatabase();
+    let user = db.users.find(u => u.id === uid || u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      user = {
+        id: uid,
+        username,
+        email,
+        createdAt: new Date().toISOString()
+      };
+      db.users.push(user);
+
+      // Seed initial default subjects in Cloud SQL & local DB
+      const initSubjs: Subject[] = [
+        { id: `subj_${Date.now()}_cs`, userId: uid, name: 'Computer Science (AI & Robotics)', color: 'emerald', createdAt: new Date().toISOString() },
+        { id: `subj_${Date.now()}_math`, userId: uid, name: 'Advanced Calculus', color: 'indigo', createdAt: new Date().toISOString() }
+      ];
+      for (const s of initSubjs) {
+        await insertSubject(s);
+      }
+
+      await insertNotification({
+        id: `not_${Date.now()}`,
+        userId: uid,
+        title: 'Welcome to Tutor AI with Cloud SQL!',
+        message: 'Your academic records are powered by Google Cloud SQL (PostgreSQL) and secured by Firebase Auth.',
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+
+      await writeDatabase(db);
+    }
+
+    res.setHeader('Set-Cookie', `tutor_ai_auth_token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
+    return res.json({ user, token });
+  } catch (err: any) {
+    console.error('Firebase Google authentication failure:', err);
+    res.status(401).json({ error: 'Failed to verify Firebase authentication credentials.' });
+  }
+});
 
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -143,10 +221,13 @@ app.get('/api/auth/session', (req, res) => {
 
 /* --- SUBJECTS MANAGEMENT CONTROLLERS --- */
 
-app.get('/api/subjects', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const userSubjects = db.subjects.filter(s => s.userId === req.user!.id);
-  res.json(userSubjects);
+app.get('/api/subjects', authenticateUser, async (req, res) => {
+  try {
+    const userSubjects = await fetchSubjects(req.user!.id);
+    res.json(userSubjects);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve subjects.' });
+  }
 });
 
 app.post('/api/subjects', authenticateUser, async (req, res) => {
@@ -154,7 +235,6 @@ app.post('/api/subjects', authenticateUser, async (req, res) => {
     const { name, color } = req.body;
     if (!name) return res.status(400).json({ error: 'Subject title is required.' });
 
-    const db = readDatabase();
     const newSubj: Subject = {
       id: `subj_${Date.now()}`,
       userId: req.user!.id,
@@ -163,9 +243,7 @@ app.post('/api/subjects', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
-    db.subjects.push(newSubj);
-    await writeDatabase(db);
-
+    await insertSubject(newSubj);
     broadcastToUser(req.user!.id, { type: 'SUBJECT_CREATED', payload: newSubj });
     return res.status(201).json(newSubj);
   } catch (err) {
@@ -176,10 +254,13 @@ app.post('/api/subjects', authenticateUser, async (req, res) => {
 
 /* --- NOTES REPOSITORY & AI SUMMARIES CONTROLLERS --- */
 
-app.get('/api/notes', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const notes = db.notes.filter(n => n.userId === req.user!.id);
-  res.json(notes);
+app.get('/api/notes', authenticateUser, async (req, res) => {
+  try {
+    const notes = await fetchNotes(req.user!.id);
+    res.json(notes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve notes.' });
+  }
 });
 
 app.post('/api/notes', authenticateUser, async (req, res) => {
@@ -189,7 +270,6 @@ app.post('/api/notes', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Subject, Title, and Content are required fields.' });
     }
 
-    const db = readDatabase();
     const noteId = `note_${Date.now()}`;
 
     // Request Gemini AI Academic Metadata synthesis
@@ -213,7 +293,7 @@ app.post('/api/notes', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
-    db.notes.push(newNote);
+    await insertNote(newNote);
 
     // If Gemini returned flashcards, populate the user card decks as well
     if (aiMeta.flashcards && aiMeta.flashcards.length > 0) {
@@ -227,11 +307,11 @@ app.post('/api/notes', authenticateUser, async (req, res) => {
         mastery: 'unfamiliar',
         createdAt: new Date().toISOString()
       }));
-      db.flashcards.push(...generatedCards);
+      await insertFlashcards(generatedCards);
     }
 
     // Append to Activity Logs
-    db.activityLogs.push({
+    await insertActivityLog({
       id: `act_${Date.now()}`,
       userId: req.user!.id,
       action: 'Created Note',
@@ -239,8 +319,6 @@ app.post('/api/notes', authenticateUser, async (req, res) => {
       activityType: 'note',
       createdAt: new Date().toISOString()
     });
-
-    await writeDatabase(db);
 
     // Notify connected client WS
     broadcastToUser(req.user!.id, { type: 'NOTE_CREATED', payload: newNote });
@@ -298,7 +376,7 @@ app.post('/api/notes/upload', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
-    db.notes.push(newNote);
+    await insertNote(newNote);
 
     // Inject flashcards from academic PDF
     const targetFlashcards = aiMeta.flashcards || parseResult.flashcards;
@@ -313,11 +391,11 @@ app.post('/api/notes/upload', authenticateUser, async (req, res) => {
         mastery: 'unfamiliar',
         createdAt: new Date().toISOString()
       }));
-      db.flashcards.push(...generatedCards);
+      await insertFlashcards(generatedCards);
     }
 
     // Log Activity
-    db.activityLogs.push({
+    await insertActivityLog({
       id: `act_${Date.now()}`,
       userId: req.user!.id,
       action: 'Uploaded PDF Material',
@@ -325,8 +403,6 @@ app.post('/api/notes/upload', authenticateUser, async (req, res) => {
       activityType: 'note',
       createdAt: new Date().toISOString()
     });
-
-    await writeDatabase(db);
     broadcastToUser(req.user!.id, { type: 'PDF_UPLOADED', payload: newNote });
 
     return res.status(201).json(newNote);
@@ -973,7 +1049,7 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
-    db.notes.push(newNote);
+    await insertNote(newNote);
 
     // Inject flashcards directly into user deck
     if (aiMeta.flashcards && aiMeta.flashcards.length > 0) {
@@ -987,11 +1063,11 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
         mastery: 'unfamiliar',
         createdAt: new Date().toISOString()
       }));
-      db.flashcards.push(...generatedCards);
+      await insertFlashcards(generatedCards);
     }
 
     // Activity Log
-    db.activityLogs.push({
+    await insertActivityLog({
       id: `act_${Date.now()}`,
       userId: req.user!.id,
       action: 'Imported Online Note',
@@ -1000,7 +1076,6 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    await writeDatabase(db);
     broadcastToUser(req.user!.id, { type: 'NOTE_CREATED', payload: newNote });
 
     return res.status(201).json(newNote);
@@ -1013,10 +1088,13 @@ app.post('/api/notes/import-online', authenticateUser, async (req, res) => {
 
 /* --- PRACTICE ARENA: FLASHCARDS, QUIZZES, LEADERBOARDS --- */
 
-app.get('/api/flashcards', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const decks = db.flashcards.filter(f => f.userId === req.user!.id);
-  res.json(decks);
+app.get('/api/flashcards', authenticateUser, async (req, res) => {
+  try {
+    const decks = await fetchFlashcards(req.user!.id);
+    res.json(decks);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed retrieving flashcards.' });
+  }
 });
 
 app.put('/api/flashcards/:id', authenticateUser, async (req, res) => {
@@ -1026,14 +1104,9 @@ app.put('/api/flashcards/:id', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Invalid card mastery level specified.' });
     }
 
-    const db = readDatabase();
-    const card = db.flashcards.find(f => f.id === req.params.id && f.userId === req.user!.id);
+    const card = await updateFlashcardMasteryRecord(req.params.id, req.user!.id, mastery);
     if (!card) return res.status(404).json({ error: 'Flashcard deck not found.' });
 
-    card.mastery = mastery;
-    card.lastReviewedAt = new Date().toISOString();
-
-    await writeDatabase(db);
     return res.json(card);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update flashcard mastery.' });
@@ -1095,7 +1168,6 @@ app.post('/api/quizzes/submit', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Incomplete score attributes.' });
     }
 
-    const db = readDatabase();
     const attempt: QuizAttempt = {
       id: `att_${Date.now()}`,
       userId: req.user!.id,
@@ -1107,11 +1179,11 @@ app.post('/api/quizzes/submit', authenticateUser, async (req, res) => {
       attemptedAt: new Date().toISOString()
     };
 
-    db.quizAttempts.push(attempt);
+    await insertQuizAttempt(attempt);
 
     // Dynamic Activity Logger
     const accuracyPct = Math.round((score / totalQuestions) * 100);
-    db.activityLogs.push({
+    await insertActivityLog({
       id: `act_${Date.now()}`,
       userId: req.user!.id,
       action: 'Completed Quiz',
@@ -1119,8 +1191,6 @@ app.post('/api/quizzes/submit', authenticateUser, async (req, res) => {
       activityType: 'quiz',
       createdAt: new Date().toISOString()
     });
-
-    await writeDatabase(db);
 
     // Broadcast update
     broadcastToUser(req.user!.id, { type: 'QUIZ_SUBMITTED', payload: attempt });
@@ -1173,10 +1243,13 @@ app.get('/api/leaderboard', (req, res) => {
 
 /* --- PLANNER MODULE TASKS --- */
 
-app.get('/api/planner', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const tasks = db.plannerTasks.filter(t => t.userId === req.user!.id);
-  res.json(tasks);
+app.get('/api/planner', authenticateUser, async (req, res) => {
+  try {
+    const tasks = await fetchPlannerTasks(req.user!.id);
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed fetching planner tasks.' });
+  }
 });
 
 app.post('/api/planner', authenticateUser, async (req, res) => {
@@ -1186,7 +1259,6 @@ app.post('/api/planner', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Task Title, Subject, and Due date are required.' });
     }
 
-    const db = readDatabase();
     const newTask: PlannerTask = {
       id: `task_${Date.now()}`,
       userId: req.user!.id,
@@ -1198,10 +1270,10 @@ app.post('/api/planner', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
-    db.plannerTasks.push(newTask);
+    await insertPlannerTask(newTask);
 
     // Save logs
-    db.activityLogs.push({
+    await insertActivityLog({
       id: `act_${Date.now()}`,
       userId: req.user!.id,
       action: 'Planner Task Added',
@@ -1210,9 +1282,7 @@ app.post('/api/planner', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    await writeDatabase(db);
     broadcastToUser(req.user!.id, { type: 'PLANNER_UPDATED', payload: newTask });
-
     return res.status(201).json(newTask);
   } catch (err) {
     res.status(500).json({ error: 'Failed logging planner task.' });
@@ -1226,15 +1296,10 @@ app.put('/api/planner/:id', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Incorrect milestone status.' });
     }
 
-    const db = readDatabase();
-    const task = db.plannerTasks.find(t => t.id === req.params.id && t.userId === req.user!.id);
+    const task = await updatePlannerTaskStatusRecord(req.params.id, req.user!.id, status as any);
     if (!task) return res.status(404).json({ error: 'Planner task not found.' });
 
-    task.status = status;
-
-    await writeDatabase(db);
     broadcastToUser(req.user!.id, { type: 'PLANNER_UPDATED', payload: task });
-
     return res.json(task);
   } catch (err) {
     res.status(500).json({ error: 'Failed updating study milestone status.' });
@@ -1244,69 +1309,71 @@ app.put('/api/planner/:id', authenticateUser, async (req, res) => {
 
 /* --- ANALYTICS DATA AGGREGATION --- */
 
-app.get('/api/analytics', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const userId = req.user!.id;
+app.get('/api/analytics', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user!.id;
 
-  // Filter student-specific models
-  const attempts = db.quizAttempts.filter(qa => qa.userId === userId);
-  const tasks = db.plannerTasks.filter(t => t.userId === userId);
-  const notes = db.notes.filter(n => n.userId === userId);
-  const cards = db.flashcards.filter(f => f.userId === userId);
+    // Filter student-specific models
+    const attempts = await fetchQuizAttempts(userId);
+    const tasks = await fetchPlannerTasks(userId);
+    const notes = await fetchNotes(userId);
+    const cards = await fetchFlashcards(userId);
+    const subjects = await fetchSubjects(userId);
 
-  // 1. Chart Data: Study Trends & Quiz score progression
-  const quizHistory = attempts.map((a, i) => ({
-    name: `Quiz ${i + 1}`,
-    score: Math.round((a.score / a.totalQuestions) * 100),
-    title: a.title
-  }));
+    // 1. Chart Data: Study Trends & Quiz score progression
+    const quizHistory = attempts.map((a, i) => ({
+      name: `Quiz ${i + 1}`,
+      score: Math.round((a.score / a.totalQuestions) * 100),
+      title: a.title
+    }));
 
-  // 2. Chart Data: Study hours mock synthesis linked to actual study logs/subjects
-  const subjects = db.subjects.filter(s => s.userId === userId);
-  const hoursData = subjects.map(s => {
-    const subjectNotesCount = notes.filter(n => n.subjectId === s.id).length;
-    const subjectQuizzesCount = attempts.filter(a => a.subjectId === s.id).length;
-    return {
-      subject: s.name.split(' ')[0], // get short prefix
-      hours: 4 + (subjectNotesCount * 2) + (subjectQuizzesCount * 1.5)
-    };
-  });
+    // 2. Chart Data: Study hours mock synthesis linked to actual study logs/subjects
+    const hoursData = subjects.map(s => {
+      const subjectNotesCount = notes.filter(n => n.subjectId === s.id).length;
+      const subjectQuizzesCount = attempts.filter(a => a.subjectId === s.id).length;
+      return {
+        subject: s.name.split(' ')[0], // get short prefix
+        hours: 4 + (subjectNotesCount * 2) + (subjectQuizzesCount * 1.5)
+      };
+    });
 
-  // 3. Subject Mastery distribution
-  const masteryData = subjects.map(s => {
-    const subjectCards = cards.filter(f => f.subjectId === s.id);
-    const knownCount = subjectCards.filter(c => c.mastery === 'known').length;
-    const masteryPct = subjectCards.length ? Math.round((knownCount / subjectCards.length) * 100) : 50;
-    return {
-      name: s.name.split(' ')[0],
-      mastery: masteryPct
-    };
-  });
+    // 3. Subject Mastery distribution
+    const masteryData = subjects.map(s => {
+      const subjectCards = cards.filter(f => f.subjectId === s.id);
+      const knownCount = subjectCards.filter(c => c.mastery === 'known').length;
+      const masteryPct = subjectCards.length ? Math.round((knownCount / subjectCards.length) * 100) : 50;
+      return {
+        name: s.name.split(' ')[0],
+        mastery: masteryPct
+      };
+    });
 
-  // Calculate metrics
-  const completionRate = tasks.length ? Math.round((tasks.filter(t => t.status === 'completed').length / tasks.length) * 100) : 0;
-  const avgScores = attempts.length
-    ? Math.round((attempts.reduce((sum, current) => sum + (current.score / current.totalQuestions), 0) / attempts.length) * 100)
-    : 0;
+    // Calculate metrics
+    const completionRate = tasks.length ? Math.round((tasks.filter(t => t.status === 'completed').length / tasks.length) * 100) : 0;
+    const avgScores = attempts.length
+      ? Math.round((attempts.reduce((sum, current) => sum + (current.score / current.totalQuestions), 0) / attempts.length) * 100)
+      : 0;
 
-  res.json({
-    studyHours: hoursData.reduce((total, cur) => total + cur.hours, 0),
-    completionRate,
-    averageScorePct: avgScores,
-    subjectsCount: subjects.length,
-    quizHistory,
-    hoursBySubject: hoursData,
-    masteryBySubject: masteryData
-  });
+    res.json({
+      studyHours: hoursData.reduce((total, cur) => total + cur.hours, 0),
+      completionRate,
+      averageScorePct: avgScores,
+      subjectsCount: subjects.length,
+      quizHistory,
+      hoursBySubject: hoursData,
+      masteryBySubject: masteryData
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed computing analytics.' });
+  }
 });
 
 // GET custom study intelligent recommendations from Gemini API
 app.get('/api/analytics/ai-recommendations', authenticateUser, async (req, res) => {
   try {
-    const db = readDatabase();
     const userId = req.user!.id;
-    const attempts = db.quizAttempts.filter(qa => qa.userId === userId);
-    const logs = db.activityLogs.filter(al => al.userId === userId);
+    const attempts = await fetchQuizAttempts(userId);
+    const logs = await fetchActivityLogs(userId);
 
     const summarizedHistory = `Student completed ${attempts.length} quizzes. Recent items completed: ${logs.slice(0, 5).map(l => l.action).join(', ')}`;
     const resultMarkdown = await generateStudyRecommendations(summarizedHistory);
@@ -1320,10 +1387,13 @@ app.get('/api/analytics/ai-recommendations', authenticateUser, async (req, res) 
 
 /* --- SYSTEM GLOBAL NOTIFICATIONS AND LOGS --- */
 
-app.get('/api/notifications', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const notes = db.notifications.filter(n => n.userId === req.user!.id);
-  res.json(notes);
+app.get('/api/notifications', authenticateUser, async (req, res) => {
+  try {
+    const notifs = await fetchNotifications(req.user!.id);
+    res.json(notifs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed fetching notifications.' });
+  }
 });
 
 app.post('/api/notifications', authenticateUser, async (req, res) => {
@@ -1333,7 +1403,6 @@ app.post('/api/notifications', authenticateUser, async (req, res) => {
       return res.status(400).json({ error: 'Title and message are required.' });
     }
 
-    const db = readDatabase();
     const newNotif = {
       id: `not_${Date.now()}`,
       userId: req.user!.id,
@@ -1343,8 +1412,7 @@ app.post('/api/notifications', authenticateUser, async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
-    db.notifications.push(newNotif);
-    await writeDatabase(db);
+    await insertNotification(newNotif);
 
     // Broadcast live update over real-time WebSockets
     broadcastToUser(req.user!.id, { type: 'NOTIFICATION_BROADCAST', payload: newNotif });
@@ -1369,10 +1437,13 @@ app.post('/api/notifications/read', authenticateUser, async (req, res) => {
   }
 });
 
-app.get('/api/activity-logs', authenticateUser, (req, res) => {
-  const db = readDatabase();
-  const logs = db.activityLogs.filter(al => al.userId === req.user!.id);
-  res.json(logs);
+app.get('/api/activity-logs', authenticateUser, async (req, res) => {
+  try {
+    const logs = await fetchActivityLogs(req.user!.id);
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed retrieving activity logs.' });
+  }
 });
 
 

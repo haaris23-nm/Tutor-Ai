@@ -2,7 +2,8 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  createdAt: string;
+  createdAt?: string;
+  uid?: string;
 }
 
 export interface Subject {
@@ -99,7 +100,8 @@ export interface QuizAttempt {
   title: string;
   score: number;
   totalQuestions: number;
-  attemptedAt: string;
+  attemptedAt?: string;
+  createdAt?: string;
 }
 
 export interface LeaderboardEntry {
@@ -127,6 +129,7 @@ export interface PlannerTask {
   description?: string;
   dueDate: string;
   status: 'pending' | 'active' | 'completed';
+  priority?: 'low' | 'medium' | 'high' | string;
   createdAt: string;
 }
 

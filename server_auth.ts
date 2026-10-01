@@ -92,9 +92,11 @@ export function verifyToken(token: string): any | null {
   }
 }
 
+import { adminAuth } from './src/lib/firebase-admin.ts';
+
 // Helper: Custom Session Expiry
 // Standard express middleware for authenticating users
-export function authenticateUser(req: Request, res: Response, next: NextFunction) {
+export async function authenticateUser(req: Request, res: Response, next: NextFunction) {
   try {
     let token = '';
 
@@ -119,6 +121,30 @@ export function authenticateUser(req: Request, res: Response, next: NextFunction
       return res.status(401).json({ error: 'Missing authentication credentials. Please authenticate.' });
     }
 
+    // 1. Attempt Firebase Admin ID Token verification
+    try {
+      const decodedFirebase = await adminAuth.verifyIdToken(token);
+      if (decodedFirebase && decodedFirebase.uid) {
+        const db = readDatabase();
+        let user = db.users.find(u => u.id === decodedFirebase.uid || u.email.toLowerCase() === (decodedFirebase.email || '').toLowerCase());
+        if (!user) {
+          user = {
+            id: decodedFirebase.uid,
+            username: decodedFirebase.name || decodedFirebase.email?.split('@')[0] || 'Learner',
+            email: decodedFirebase.email || '',
+            createdAt: new Date().toISOString()
+          };
+          db.users.push(user);
+          await writeDatabase(db);
+        }
+        req.user = user;
+        return next();
+      }
+    } catch {
+      // Proceed to legacy JWT verification
+    }
+
+    // 2. Fallback to legacy JWT verification
     const decoded = verifyToken(token);
     if (!decoded || !decoded.id) {
       return res.status(401).json({ error: 'Invalid or expired session token. Please re-authenticate.' });
@@ -138,3 +164,4 @@ export function authenticateUser(req: Request, res: Response, next: NextFunction
     res.status(500).json({ error: 'Internal failure protecting the endpoint.' });
   }
 }
+

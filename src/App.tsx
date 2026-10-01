@@ -211,6 +211,29 @@ export default function App() {
     await loadRelationalData(data.token);
   };
 
+  const handleGoogleSignIn = async () => {
+    const { signInWithPopup } = await import('firebase/auth');
+    const { auth, googleAuthProvider } = await import('./lib/firebase');
+    const result = await signInWithPopup(auth, googleAuthProvider);
+    const idToken = await result.user.getIdToken();
+
+    const resp = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: idToken })
+    });
+
+    if (!resp.ok) {
+      const errData = await resp.json();
+      throw new Error(errData.error || 'Google Sign-In failed.');
+    }
+
+    const data = await resp.json();
+    setUser(data.user);
+    setToken(data.token);
+    await loadRelationalData(data.token);
+  };
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
@@ -467,7 +490,11 @@ export default function App() {
   // Require Auth page if user is unauthenticated
   if (!user) {
     return (
-      <AuthView onLogin={handleLogin} onRegister={handleRegister} />
+      <AuthView
+        onLogin={handleLogin}
+        onRegister={handleRegister}
+        onGoogleSignIn={handleGoogleSignIn}
+      />
     );
   }
 
